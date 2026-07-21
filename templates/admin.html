@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Center | Biometric Voting</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body { background: #f1f5f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .stat-card { border-left: 5px solid; }
+        .cand-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #e2e8f0; border: 1px solid #cbd5e1; }
+        .voter-thumb { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background: #e2e8f0; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Admin Control Center</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+                {% if logged_in %}
+                <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    <i class="bi bi-key-fill me-1"></i>Change Password
+                </button>
+                <a href="/admin/logout" class="btn btn-danger btn-sm"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        {% if not logged_in %}
+        <!-- Admin Login Screen -->
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card card-custom p-4 p-md-5 text-center bg-white">
+                    <div class="mb-3 text-warning">
+                        <i class="bi bi-shield-lock display-3"></i>
+                    </div>
+                    <h3 class="fw-bold mb-1">Admin Password Required</h3>
+                    <p class="text-muted small mb-4">Enter system administrator password to access controls.</p>
+
+                    {% if error %}
+                    <div class="alert alert-danger py-2 small mb-3">{{ error }}</div>
+                    {% endif %}
+
+                    <form method="POST" action="/admin">
+                        <div class="mb-4 text-start">
+                            <label class="form-label small fw-bold">Admin Password</label>
+                            <input type="password" name="login_password" class="form-control form-control-lg" placeholder="••••••••" required autofocus>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold py-3">LOGIN TO ADMIN CENTER</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+
+        {% if success_msg %}
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ success_msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <!-- Authenticated Admin Dashboard -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Election Management System</h2>
+                <p class="text-muted mb-0">Approve candidates, set custom election duration, and manage election state.</p>
+            </div>
+            <div>
+                {% if state.status == 'CLOSED' %}
+                    <a href="/export_results" class="btn btn-success me-2"><i class="bi bi-download me-1"></i>Export CSV Report</a>
+                    <a href="/declare_winner" class="btn btn-gold btn-warning fw-bold"><i class="bi bi-trophy-fill me-1"></i>Winner Certificate</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Election Status Banner & Controls -->
+        <div class="card card-custom p-4 mb-4 bg-white border-start border-4 {% if state.status == 'ACTIVE' %}border-success{% elif state.status == 'CLOSED' %}border-danger{% else %}border-secondary{% endif %}">
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <h5 class="fw-bold mb-1">Current Election State: 
+                        {% if state.status == 'NOT_STARTED' %}
+                            <span class="badge bg-secondary">NOT STARTED</span>
+                        {% elif state.status == 'ACTIVE' %}
+                            <span class="badge bg-success">ACTIVE (VOTING OPEN)</span>
+                        {% elif state.status == 'CLOSED' %}
+                            <span class="badge bg-danger">CLOSED (VOTING ENDED)</span>
+                        {% endif %}
+                    </h5>
+                    {% if state.status == 'ACTIVE' and state.time_remaining > 0 %}
+                        <p class="text-success fw-bold mb-0 mt-2"><i class="bi bi-clock-history me-1"></i> Voting Time Remaining: <span id="admin-timer"></span></p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 text-md-end">
+                    {% if state.status == 'NOT_STARTED' or state.status == 'CLOSED' %}
+                        <form action="/admin" method="POST" class="d-inline-flex gap-2 align-items-center">
+                            <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                            <input type="hidden" name="admin_action" value="start_election">
+                            <label class="form-label small fw-bold mb-0 text-nowrap">Duration (Minutes):</label>
+                            <input type="number" name="duration" class="form-control w-auto" min="1" max="1440" value="10" placeholder="e.g. 5, 15, 60" required style="width: 130px !important;">
+                            <button type="submit" class="btn btn-success fw-bold px-4 text-nowrap"><i class="bi bi-play-fill me-1"></i>START ELECTION</button>
+                        </form>
+                    {% elif state.status == 'ACTIVE' %}
+                        <div class="d-inline-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+                            <!-- Extend Election Time Form -->
+                            <form action="/admin" method="POST" class="d-inline-flex gap-1 align-items-center">
+                                <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                <input type="hidden" name="admin_action" value="extend_election">
+                                <input type="number" name="additional_minutes" class="form-control form-control-sm" min="1" max="120" value="5" placeholder="Mins" required style="width: 85px !important;">
+                                <button type="submit" class="btn btn-warning btn-sm fw-bold text-nowrap"><i class="bi bi-clock-fill me-1"></i>+ Extend Time</button>
+                            </form>
+                            <!-- End Election Form -->
+                            <form action="/admin" method="POST" class="d-inline">
+                                <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                <input type="hidden" name="admin_action" value="stop_election">
+                                <button type="submit" class="btn btn-danger btn-sm fw-bold px-3" onclick="return confirm('Stop election and close voting now?')">
+                                    <i class="bi bi-stop-fill me-1"></i>END ELECTION
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- System Stats Cards -->
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-md-3">
+                <div class="card card-custom p-3 bg-white stat-card border-primary">
+                    <div class="text-muted small fw-bold">TOTAL REGISTERED VOTERS</div>
+                    <div class="fs-2 fw-bold text-primary">{{ total_reg }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-custom p-3 bg-white stat-card border-success">
+                    <div class="text-muted small fw-bold">VOTES CAST</div>
+                    <div class="fs-2 fw-bold text-success">{{ voted_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-custom p-3 bg-white stat-card border-warning">
+                    <div class="text-muted small fw-bold">PENDING VOTERS</div>
+                    <div class="fs-2 fw-bold text-warning">{{ pending_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-custom p-3 bg-white stat-card border-info">
+                    <div class="text-muted small fw-bold">APPROVED BALLOT CANDIDATES</div>
+                    <div class="fs-2 fw-bold text-info">{{ approved_candidates|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Candidate Approvals Section -->
+        {% if pending_candidates %}
+        <div class="card card-custom p-4 bg-white mb-4 border-start border-4 border-warning">
+            <h4 class="fw-bold mb-3 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Pending Candidate Nominations (Action Required)</h4>
+            <p class="text-muted small mb-3">Candidates nominated outside admin require your approval before appearing on the electronic ballot.</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Logo</th>
+                            <th>Nominated Candidate</th>
+                            <th>Party Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pc in pending_candidates %}
+                        <tr>
+                            <td>
+                                {% if pc.logo_path %}
+                                    <img src="{{ pc.logo_path }}" class="cand-thumb" alt="Logo">
+                                {% else %}
+                                    <div class="cand-thumb d-flex align-items-center justify-content-center text-muted fw-bold"><i class="bi bi-person-fill"></i></div>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ pc.name }}</td>
+                            <td><span class="badge bg-secondary">{{ pc.party_name }}</span></td>
+                            <td>
+                                <form action="/admin" method="POST" class="d-inline">
+                                    <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                    <input type="hidden" name="admin_action" value="approve_candidate">
+                                    <input type="hidden" name="candidate_id" value="{{ pc.id }}">
+                                    <button type="submit" class="btn btn-sm btn-success fw-bold me-2"><i class="bi bi-check-lg me-1"></i>APPROVE TO BALLOT</button>
+                                </form>
+                                <form action="/admin" method="POST" class="d-inline">
+                                    <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                    <input type="hidden" name="admin_action" value="delete_candidate">
+                                    <input type="hidden" name="candidate_id" value="{{ pc.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Reject candidate nomination for {{ pc.name }}?')">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <!-- Approved Candidates & Direct Add -->
+            <div class="col-lg-6">
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <h4 class="fw-bold mb-3"><i class="bi bi-person-plus-fill text-primary me-2"></i>Directly Add Approved Candidate</h4>
+                    <form action="/admin" method="POST" enctype="multipart/form-data" class="row g-2">
+                        <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                        <input type="hidden" name="admin_action" value="add_candidate">
+                        <div class="col-md-6">
+                            <input type="text" name="name" class="form-control mb-2" placeholder="Candidate Full Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="party" class="form-control mb-2" placeholder="Party Name" required>
+                        </div>
+                        <div class="col-md-8">
+                            <input type="file" name="logo_file" accept="image/*" class="form-control form-control-sm" title="Upload Party Logo / Candidate Photo">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold">Add Candidate</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card card-custom p-4 bg-white">
+                    <h4 class="fw-bold mb-3"><i class="bi bi-award-fill text-success me-2"></i>Approved Ballot Candidates</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Logo</th>
+                                    <th>Candidate Name</th>
+                                    <th>Party</th>
+                                    <th>Votes</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in approved_candidates %}
+                                <tr>
+                                    <td>
+                                        {% if c.logo_path %}
+                                            <img src="{{ c.logo_path }}" class="cand-thumb" alt="Logo">
+                                        {% else %}
+                                            <div class="cand-thumb d-flex align-items-center justify-content-center text-muted fw-bold"><i class="bi bi-person-fill"></i></div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ c.name }}</td>
+                                    <td><span class="badge bg-secondary">{{ c.party_name }}</span></td>
+                                    <td class="fw-bold text-primary">{{ c.votes }}</td>
+                                    <td>
+                                        {% if c.name.upper() == 'NOTA' %}
+                                            <span class="badge bg-secondary px-2 py-1"><i class="bi bi-shield-lock me-1"></i>Permanent</span>
+                                        {% else %}
+                                            <form action="/admin" method="POST" class="d-inline">
+                                                <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                                <input type="hidden" name="admin_action" value="delete_candidate">
+                                                <input type="hidden" name="candidate_id" value="{{ c.id }}">
+                                                <button type="submit" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('Remove candidate {{ c.name }}?')"><i class="bi bi-trash-fill me-1"></i>Delete</button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="5" class="text-center text-muted py-3">No candidates approved for ballot yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registered Voters & Danger Zone -->
+            <div class="col-lg-6">
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <h4 class="fw-bold mb-3"><i class="bi bi-people-fill text-info me-2"></i>Registered Voters Directory</h4>
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Photo</th>
+                                    <th>Voter Name</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in voters %}
+                                <tr>
+                                    <td>
+                                        {% if v.capture_path %}
+                                            <img src="{{ v.capture_path }}" class="voter-thumb" alt="Voter Photo">
+                                        {% else %}
+                                            <div class="voter-thumb d-flex align-items-center justify-content-center text-muted fw-bold"><i class="bi bi-person-fill"></i></div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ v.full_name }}</td>
+                                    <td>
+                                        {% if v.has_voted %}
+                                            <span class="badge bg-success">Voted ({{ v.candidate_chosen or 'Recorded' }})</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Eligible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form action="/admin" method="POST" class="d-inline">
+                                            <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                                            <input type="hidden" name="admin_action" value="delete_voter">
+                                            <input type="hidden" name="voter_id" value="{{ v.id }}">
+                                            <button type="submit" class="btn btn-sm btn-danger fw-bold" onclick="return confirm('Remove voter {{ v.full_name }}?')"><i class="bi bi-trash-fill me-1"></i>Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-center text-muted">No voters registered yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Danger Zone: Restart Election -->
+                <div class="card card-custom p-4 border border-danger bg-white">
+                    <h4 class="text-danger fw-bold mb-2"><i class="bi bi-exclamation-octagon-fill me-2"></i>Danger Zone: Restart Election</h4>
+                    <p class="text-muted small">Wipes all votes cast and resets election status to <strong>NOT STARTED</strong>. Registered voters & candidates are retained.</p>
+                    <form action="/admin" method="POST" class="row g-2">
+                        <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                        <input type="hidden" name="admin_action" value="reset_election">
+                        <div class="col-md-8">
+                            <input type="password" name="admin_password" class="form-control" placeholder="Enter Admin Password to Confirm" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-danger w-100 fw-bold" onclick="return confirm('DANGER: Reset all votes and restart election?')">RESTART</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-key-fill text-warning me-2"></i>Change Admin Password</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="/admin" method="POST">
+                        <div class="modal-body p-4">
+                            <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                            <input type="hidden" name="admin_action" value="change_password">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Current Password</label>
+                                <input type="password" name="current_password" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">New Password</label>
+                                <input type="password" name="new_password" class="form-control" minlength="4" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Confirm New Password</label>
+                                <input type="password" name="confirm_password" class="form-control" minlength="4" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning fw-bold">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if state.status == 'ACTIVE' and state.time_remaining > 0 %}
+        <script>
+            let sec = {{ state.time_remaining }};
+            function tickAdmin() {
+                if (sec <= 0) { location.reload(); return; }
+                let m = Math.floor(sec / 60);
+                let s = sec % 60;
+                document.getElementById('admin-timer').innerText = `${m}m ${s < 10 ? '0' : ''}${s}s`;
+                sec--;
+            }
+            tickAdmin();
+            setInterval(tickAdmin, 1000);
+        </script>
+        {% endif %}
+
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        /* This handles the sidebar look */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            transition: all 0.2s;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            color: #94a3b8;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: #3b82f6 !important;
+            color: white !important;
+        }
+
+        /* IMPORTANT: This prevents the sidebar from covering your text */
+        .main-content {
+            margin-left: 260px;
+            padding: 40px;
+            min-height: 100vh;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar"> ... </div>
+
+    <div class="main-content">
+        </div>
+</body>
+<body class="bg-light"><div class="container mt-5"><div class="card p-4 shadow">
+    <h2>Candidate Registration</h2>
+    <form action="/register_candidate" method="post">
+        <div class="mb-3"><label>Candidate Name</label><input type="text" name="name" class="form-control" required></div>
+        <div class="mb-3"><label>Party Name</label><input type="text" name="party" class="form-control" required></div>
+        <button type="submit" class="btn btn-success">Add Candidate</button>
+    </form>
+</div></div>
+<div class="mb-3">
+    <label class="text-danger fw-bold">Admin Authorization</label>
+    <input type="password" name="admin_password" class="form-control" placeholder="Enter Password to Register" required>
+</div>
+
+{% include 'style.html' %}
+<div class="main-content">
+    <div class="card p-5 shadow mx-auto" style="max-width: 500px;">
+        <h3 class="fw-bold mb-4">Register New Candidate</h3>
+        <form method="POST" action="/add_candidate">
+            <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Party Name</label>
+                <input type="text" name="party" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Add to Election</button>
+        </form>
+    </div>
+</div>
+{% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+<button type="submit" class="btn btn-primary w-100">Confirm Registration</button>
+</body></html>

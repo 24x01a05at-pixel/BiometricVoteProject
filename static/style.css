@@ -1,0 +1,108 @@
+/* --- Global Reset & Variables --- */
+:root {
+    --sidebar-bg: #0f172a;
+    --sidebar-hover: #1e293b;
+    --accent-blue: #3b82f6;
+    --text-slate: #94a3b8;
+    --bg-light: #f8fafc;
+    --white: #ffffff;
+    --gold: #D4AF37;
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+}
+
+/* --- Sidebar Layout --- */
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+    z-index: 1000;
+}
+
+.sidebar .nav-link {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    margin: 5px 15px;
+    color: var(--text-slate);
+    padding: 12px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sidebar .nav-link:hover {
+    background: var(--sidebar-hover);
+    color: var(--white);
+}
+
+.sidebar .nav-link.active {
+    background: var(--accent-blue) !important;
+    color: var(--white) !important;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+/* --- Main Content Spacing --- */
+/* This is crucial: it pushes the content 260px to the right so the sidebar doesn't overlap it */
+.main-content {
+    margin-left: 260px;
+    padding: 40px;
+    min-height: 100vh;
+}
+
+/* --- Cards & UI Elements --- */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    background: var(--white);
+}
+
+.stat-card {
+    border-start-width: 5px !important;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+/* --- Biometric UI Elements --- */
+.voter-avatar {
+    object-fit: cover;
+    border: 2px solid #e2e8f0;
+}
+
+.btn-gold {
+    background-color: var(--gold);
+    color: white;
+    font-weight: bold;
+    border-radius: 10px;
+}
+
+.btn-gold:hover {
+    background-color: #b8962d;
+    color: white;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar .nav-link span { display: none; } /* Hide text on small screens */
+    .main-content { margin-left: 70px; }
+}
+:root { --sidebar-bg: #0f172a; --accent: #3b82f6; }
+body { background: #f8fafc; font-family: sans-serif; margin: 0; }
+.sidebar { width: 260px; height: 100vh; position: fixed; background: var(--sidebar-bg); color: white; padding-top: 20px; }
+.main-content { margin-left: 260px; padding: 40px; }
+.nav-link { color: #94a3b8; padding: 12px 20px; display: block; text-decoration: none; }
+.nav-link.active { background: var(--accent); color: white; border-radius: 8px; margin: 0 10px; }
+.card { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }

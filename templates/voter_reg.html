@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Voter Enrollment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .webcam-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 16px; overflow: hidden; background: #000; border: 4px solid #3b82f6; }
+        video { width: 100%; display: block; }
+        .scan-overlay { position: absolute; top: 10%; left: 15%; width: 70%; height: 80%; border: 2px dashed rgba(59, 130, 246, 0.8); border-radius: 50%; pointer-events: none; }
+        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .voter-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background: #e2e8f0; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="bi bi-shield-check text-primary me-2"></i>Biometric Vote</a>
+            <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row g-4 justify-content-center">
+            
+            <!-- Registration Form & Camera -->
+            <div class="col-lg-6">
+                <div class="card card-custom p-4 bg-white">
+                    <h3 class="fw-bold text-dark mb-2"><i class="bi bi-person-plus-fill text-primary me-2"></i>Biometric Voter Enrollment</h3>
+                    <p class="text-muted small mb-4">Center your face in the oval frame below to capture your unique 128-d face encoding & voter profile photo. Duplicate faces will be detected and blocked automatically.</p>
+
+                    <!-- Alert Banner -->
+                    <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
+
+                    <form id="reg-form">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Voter Full Name</label>
+                            <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
+                        </div>
+
+                        <div class="mb-4 text-center">
+                            <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
+                            <div class="webcam-container">
+                                <video id="webcam" autoplay playsinline></video>
+                                <div class="scan-overlay"></div>
+                            </div>
+                            <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
+                        </div>
+
+                        <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
+                            <i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Registered Voters Directory -->
+            <div class="col-lg-5">
+                <div class="card card-custom p-4 bg-white h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0"><i class="bi bi-people-fill text-success me-2"></i>Registered Directory</h4>
+                        <span class="badge bg-secondary rounded-pill">{{ voters|length }} Enrolled</span>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Photo</th>
+                                    <th>Voter Name</th>
+                                    <th class="text-end">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in voters %}
+                                <tr>
+                                    <td>
+                                        {% if v.capture_path %}
+                                            <img src="{{ v.capture_path }}" class="voter-thumb" alt="Voter Photo">
+                                        {% else %}
+                                            <div class="voter-thumb d-flex align-items-center justify-content-center text-muted fw-bold"><i class="bi bi-person-fill"></i></div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ v.full_name }}</td>
+                                    <td class="text-end">
+                                        {% if v.has_voted %}
+                                            <span class="badge bg-success">Voted</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Eligible</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">No voters registered yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const alertBox = document.getElementById('alert-box');
+        const form = document.getElementById('reg-form');
+        const btnSubmit = document.getElementById('btn-submit');
+
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => video.srcObject = stream)
+            .catch(err => {
+                showAlert('danger', 'Camera Access Error: ' + err.message + '. Please allow webcam access.');
+            });
+
+        function showAlert(type, msg) {
+            alertBox.className = `alert alert-${type} mb-4`;
+            alertBox.innerHTML = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('voter_name').value.trim();
+            if (!name) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, 640, 480);
+            const imageData = canvas.toDataURL('image/jpeg', 0.85);
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Processing Face Encoding...`;
+            alertBox.classList.add('d-none');
+
+            const formData = new FormData();
+            formData.append('voter_name', name);
+            formData.append('image_data', imageData);
+
+            fetch('/voter/register', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER`;
+
+                if (data.status === 'success') {
+                    showAlert('success', `<i class="bi bi-check-circle-fill me-2"></i>` + data.message);
+                    document.getElementById('voter_name').value = '';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('danger', `<i class="bi bi-exclamation-triangle-fill me-2"></i>` + data.message);
+                }
+            })
+            .catch(err => {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER`;
+                showAlert('danger', 'Server Error: ' + err.message);
+            });
+        });
+    </script>
+</body>
+</html>

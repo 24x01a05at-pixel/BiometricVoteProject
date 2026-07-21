@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Voting Booth</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+        .booth-card { background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .webcam-box { position: relative; width: 100%; max-width: 500px; margin: 0 auto; border-radius: 16px; overflow: hidden; border: 4px solid #10b981; }
+        video { width: 100%; display: block; }
+        .face-frame { position: absolute; top: 15%; left: 20%; width: 60%; height: 70%; border: 3px dashed #10b981; border-radius: 50%; pointer-events: none; }
+    </style>
+</head>
+<body class="d-flex flex-column justify-content-between">
+
+    <nav class="navbar navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="bi bi-shield-check text-success me-2"></i>Secure Biometric Booth</a>
+            <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5 text-center my-auto">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="card booth-card p-4 p-md-5">
+                    <h2 class="fw-bold mb-2"><i class="bi bi-person-bounding-box text-success me-2"></i>Biometric Verification</h2>
+                    <p class="text-secondary mb-4">Look directly into the camera to authenticate your voter identity before proceeding to the electronic ballot.</p>
+
+                    {% if state.status != 'ACTIVE' %}
+                    <div class="alert alert-danger py-3 fw-bold mb-4">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>VOTING IS CURRENTLY CLOSED BY ELECTION COMMISSION.
+                    </div>
+                    {% else %}
+
+                    <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
+
+                    <div class="webcam-box mb-4">
+                        <video id="webcam" autoplay playsinline></video>
+                        <div class="face-frame"></div>
+                    </div>
+                    <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
+
+                    <button id="btn-scan" class="btn btn-success btn-lg px-5 py-3 fw-bold w-100 fs-5">
+                        <i class="bi bi-camera-fill me-2"></i>IDENTIFY FACE & PROCEED TO BALLOT
+                    </button>
+
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const alertBox = document.getElementById('alert-box');
+        const btnScan = document.getElementById('btn-scan');
+
+        if (video) {
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+                .then(stream => video.srcObject = stream)
+                .catch(err => {
+                    showAlert('danger', 'Camera Error: ' + err.message);
+                });
+
+            function showAlert(type, msg) {
+                alertBox.className = `alert alert-${type} mb-4 fw-bold`;
+                alertBox.innerHTML = msg;
+                alertBox.classList.remove('d-none');
+            }
+
+            btnScan.addEventListener('click', function() {
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 640, 480);
+                const imageData = canvas.toDataURL('image/jpeg', 0.85);
+
+                btnScan.disabled = true;
+                btnScan.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Authenticating Biometrics...`;
+                alertBox.classList.add('d-none');
+
+                const formData = new FormData();
+                formData.append('image_data', imageData);
+
+                fetch('/run_booth', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(data => {
+                    btnScan.disabled = false;
+                    btnScan.innerHTML = `<i class="bi bi-camera-fill me-2"></i>IDENTIFY FACE & PROCEED TO BALLOT`;
+
+                    if (data.status === 'success') {
+                        showAlert('success', `<i class="bi bi-check-circle-fill me-2"></i>Identity Confirmed: Welcome, ${data.voter_name}! Redirecting to ballot...`);
+                        setTimeout(() => location.href = '/ballot', 1200);
+                    } else {
+                        showAlert('danger', `<i class="bi bi-x-circle-fill me-2"></i>` + data.message);
+                    }
+                })
+                .catch(err => {
+                    btnScan.disabled = false;
+                    btnScan.innerHTML = `<i class="bi bi-camera-fill me-2"></i>IDENTIFY FACE & PROCEED TO BALLOT`;
+                    showAlert('danger', 'Server Error: ' + err.message);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

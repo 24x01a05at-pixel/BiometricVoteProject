@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Official Winner Certificate</title>
+    <style>
+        body { background: #f0f0f0; display: flex; justify-content: center; padding: 50px; font-family: 'Times New Roman', serif; }
+        .cert-border { background: white; padding: 40px; border: 15px double #D4AF37; width: 800px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; }
+        .header { color: #D4AF37; font-size: 24px; text-transform: uppercase; letter-spacing: 5px; }
+        .main-title { font-size: 46px; margin: 20px 0; color: #2c3e50; font-weight: bold; }
+        .winner-logo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #D4AF37; margin: 15px auto; display: block; background: white; }
+        .winner-box { font-size: 38px; font-weight: bold; color: #1a5276; margin: 20px 0 10px; border-bottom: 2px solid #333; display: inline-block; padding: 0 40px; }
+        .details { font-size: 22px; line-height: 1.8; color: #555; }
+        .footer { margin-top: 50px; display: flex; justify-content: space-around; }
+        .sign-line { border-top: 1px solid #333; width: 200px; margin-top: 40px; font-size: 14px; }
+        @media print { .print-btn { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="cert-border">
+        <div class="header">Official Election Commission</div>
+        <div class="main-title">Certificate of Election</div>
+
+        {% if no_winner %}
+            <p class="details" style="margin-top: 40px;">This election cycle concluded with <strong>0 votes cast</strong>.</p>
+            <div class="winner-box" style="color: #7f8c8d;">NO WINNER DECLARED</div>
+            <p class="details">No candidate received votes to claim victory.</p>
+        {% else %}
+            <p class="details">This is to certify that through a secure biometric election process,</p>
+            
+            {% if logo_path %}
+                <img src="{{ logo_path }}" class="winner-logo" alt="Winner Logo">
+            {% endif %}
+
+            <div class="winner-box">{{ name }}</div>
+            <p class="details">of the <strong>{{ party }}</strong> party<br>
+            is hereby declared the winner with a total of <strong>{{ votes }}</strong> votes.</p>
+        {% endif %}
+
+        <p class="details" style="font-size: 18px; margin-top: 20px;">Date of Certification: {{ date }}</p>
+        
+        <div class="footer">
+            <div class="sign-line">Election Commissioner</div>
+            <div class="sign-line">Biometric System Auditor</div>
+        </div>
+        <br>
+        <button class="print-btn" onclick="window.print()" style="padding:10px 20px; cursor:pointer; font-weight: bold; background: #D4AF37; color: white; border: none; border-radius: 5px;">Print Certificate</button>
+    </div>
+</body>
+</html>

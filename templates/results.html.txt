@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container p-5 text-center">
+    <div class="card shadow p-5 border-success">
+        <h1 class="text-success">Live Election Results</h1>
+        <hr>
+        {% for r in results %}
+        <div class="d-flex justify-content-between h4 border-bottom py-2">
+            <span>{{ r.name }} ({{ r.party_name }})</span>
+            <span class="fw-bold">{{ r.votes }} Votes</span>
+        </div>
+        {% endfor %}
+        <a href="/" class="btn btn-secondary mt-5">Return to Dashboard</a>
+    </div>
+</body>
+</html>

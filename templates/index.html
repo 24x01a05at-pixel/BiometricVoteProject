@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Biometric Vote Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container p-4 bg-light">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Vote Dashboard</h1>
+        <div>
+            <a href="/admin" class="btn btn-dark me-2">Admin Control Center</a>
+            <a href="/results" class="btn btn-info me-2 text-white">View Live Results</a>
+            <a href="/restart_election" class="btn btn-danger" onclick="return confirm('Wipe all candidates and reset votes?')">Restart Election</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card p-3 shadow-sm">
+                <h3>Voter Registration</h3>
+                <form action="/register_voter" method="POST" class="d-flex gap-2">
+                    <input name="voter_name" class="form-control" placeholder="Full Name" required>
+                    <button class="btn btn-success">Add</button>
+                </form>
+                <hr>
+                <ul class="list-group">
+                    {% for v in voters %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        {{ v.full_name }}
+                        <a href="/delete_voter/{{ v.id }}" class="text-danger">Delete</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card p-3 shadow-sm">
+                <h3>Add Candidate</h3>
+                <form action="/add_candidate" method="POST">
+                    <input name="name" class="form-control mb-2" placeholder="Candidate Name" required>
+                    <input name="party" class="form-control mb-2" placeholder="Party Name" required>
+                    <button class="btn btn-primary w-100">Add Candidate</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-5 text-center shadow border-warning">
+        <h2>Voting Booth</h2>
+        <button onclick="startScan()" class="btn btn-warning btn-lg px-5 fw-bold">START FACE IDENTIFICATION</button>
+    </div>
+
+    <script>
+        function startScan() {
+            fetch('/run_booth', {method: 'POST'})
+            .then(r => r.json())
+            .then(d => d.status == 'success' ? location.href='/ballot' : alert('Face Not Detected!'));
+        }
+    </script>
+</body>
+</html>

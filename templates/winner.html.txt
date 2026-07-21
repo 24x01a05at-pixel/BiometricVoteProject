@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Official Election Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .certificate-border { border: 10px groove #D4AF37; padding: 50px; background: white; margin-top: 50px; }
+        .seal { width: 150px; opacity: 0.8; }
+    </style>
+</head>
+<body class="bg-secondary">
+    <div class="container">
+        <div class="certificate-border text-center shadow-lg">
+            <h1 style="color: #D4AF37; font-size: 3rem; font-family: serif;">Certificate of Election</h1>
+            <p class="lead mt-4">This document officially certifies that</p>
+            <h2 class="display-4 fw-bold underline">{{ winner_name }}</h2>
+            <p class="lead">representing the <strong>{{ winner_party }}</strong></p>
+            <p>has been declared the winner with a total of <strong>{{ winner_votes }}</strong> votes.</p>
+            <hr class="w-50 mx-auto">
+            <p class="small text-muted">Generated on: {{ date }} | Secure Biometric Verification System</p>
+            <button class="btn btn-dark mt-4 no-print" onclick="window.print()">Print Certificate</button>
+        </div>
+    </div>
+</body>
+</html>
