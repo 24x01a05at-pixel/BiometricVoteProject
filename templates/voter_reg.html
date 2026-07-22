@@ -6,12 +6,48 @@
     <title>Biometric Voter Enrollment</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .webcam-container { position: relative; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 16px; overflow: hidden; background: #000; border: 4px solid #3b82f6; }
+        body { background: #f1f5f9; font-family: 'Outfit', sans-serif; }
+        .webcam-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 480px; 
+            margin: 0 auto; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            background: #000; 
+            border: 4px solid #3b82f6;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
+        }
         video { width: 100%; display: block; }
-        .scan-overlay { position: absolute; top: 10%; left: 15%; width: 70%; height: 80%; border: 2px dashed rgba(59, 130, 246, 0.8); border-radius: 50%; pointer-events: none; }
-        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+        .scan-overlay { 
+            position: absolute; 
+            top: 10%; 
+            left: 15%; 
+            width: 70%; 
+            height: 80%; 
+            border: 2px dashed rgba(59, 130, 246, 0.8); 
+            border-radius: 50%; 
+            pointer-events: none; 
+            z-index: 5;
+        }
+        @keyframes scanline {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 0.4; }
+            100% { top: 100%; opacity: 0.8; }
+        }
+        .scan-bar {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, #3b82f6, transparent);
+            box-shadow: 0 0 15px #3b82f6;
+            animation: scanline 2.5s infinite linear;
+            pointer-events: none;
+            z-index: 6;
+        }
+        .card-custom { border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
         .voter-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background: #e2e8f0; }
     </style>
 </head>
@@ -47,6 +83,7 @@
                             <div class="webcam-container">
                                 <video id="webcam" autoplay playsinline></video>
                                 <div class="scan-overlay"></div>
+                                <div class="scan-bar"></div>
                             </div>
                             <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
                         </div>
