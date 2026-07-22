@@ -217,7 +217,23 @@
         <div class="row g-4">
             <!-- Left Side: Candidate Tie-Breaker Voting Block ONLY -->
             <div class="col-lg-6">
-                {% if tie %}
+                {% if second_tie %}
+                <!-- Double Tie Warning block with Reset button -->
+                <div class="card card-custom p-4 bg-white mb-4 border border-danger border-3 text-center">
+                    <div class="mb-3 text-danger">
+                        <i class="bi bi-exclamation-octagon-fill display-4"></i>
+                    </div>
+                    <h4 class="text-danger fw-bold mb-2">Double Tie Detected!</h4>
+                    <p class="text-muted small">The candidate tie-breaker voting also ended in a tie. You must re-conduct candidate voting or choose to restart the entire election.</p>
+                    <form action="/admin" method="POST" class="d-inline-block">
+                        <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                        <input type="hidden" name="admin_action" value="reconduct_tie_vote">
+                        <button type="submit" class="btn btn-danger fw-bold px-4 py-2">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>RE-CONDUCT CANDIDATE VOTING
+                        </button>
+                    </form>
+                </div>
+                {% elif tie %}
                 <!-- Active Candidate Tie-Breaker Voting -->
                 <div class="card card-custom p-4 bg-white mb-4 border border-warning border-3">
                     <h4 class="fw-bold mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Candidate Tie-Breaker Voting</h4>

@@ -231,6 +231,11 @@ def admin_portal():
                 conn.commit()
                 success_msg = "Candidate tie-breaker vote successfully registered!"
             
+        elif action == 'reconduct_tie_vote':
+            cur.execute("UPDATE candidates SET tie_votes = 0, has_tie_voted = FALSE")
+            conn.commit()
+            success_msg = "Tie-breaker reset. Candidates can now vote again to resolve the new tie!"
+            
         elif action == 'change_password':
             curr_p = request.form.get('current_password', '')
             new_p = request.form.get('new_password', '').strip()
@@ -329,23 +334,33 @@ def admin_portal():
     # Check for active tie-breaker voting requirements
     actual_candidates = [c for c in approved_cands if c['name'].strip().upper() != 'NOTA']
     tie = False
+    second_tie = False
     tied_candidates = []
     pending_tie_voters = []
     
     if state['status'] == 'CLOSED' and actual_candidates:
         max_votes = max(c['votes'] for c in actual_candidates)
         if max_votes > 0:
-            tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
-            if len(tied_candidates) > 1:
-                # Find which candidates haven't voted yet in the tie-breaker
+            primary_tied = [c for c in actual_candidates if c['votes'] == max_votes]
+            if len(primary_tied) > 1:
+                # Primary tie detected
                 pending_tie_voters = [c for c in actual_candidates if not c['has_tie_voted']]
-                # A tie-breaker is active if at least one candidate hasn't voted yet
                 if len(pending_tie_voters) > 0:
                     tie = True
+                    tied_candidates = primary_tied
+                else:
+                    # All candidates voted. Check if scores are still tied!
+                    actual_sorted = sorted(actual_candidates, key=lambda x: (x['votes'] + x['tie_votes']), reverse=True)
+                    top_score = actual_sorted[0]['votes'] + actual_sorted[0]['tie_votes']
+                    top_scorers = [c for c in actual_sorted if (c['votes'] + c['tie_votes']) == top_score]
+                    if len(top_scorers) > 1:
+                        # Tie again!
+                        second_tie = True
+                        tied_candidates = top_scorers
                 
     conn.close()
 
-    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters, tie=tie, tied_candidates=tied_candidates, pending_tie_voters=pending_tie_voters)
+    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters, tie=tie, second_tie=second_tie, tied_candidates=tied_candidates, pending_tie_voters=pending_tie_voters)
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -492,19 +507,15 @@ def results():
         if max_votes > 0:
             tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
             if len(tied_candidates) > 1:
-                # Check if tie-breaker voting is still active (some candidates haven't voted yet)
                 pending_voters = [c for c in actual_candidates if not c['has_tie_voted']]
                 pending_count = len(pending_voters)
                 if pending_count > 0:
                     tie = True
                 else:
-                    # Tie-breaker complete! Determine winner by highest votes + tie_votes
                     actual_candidates_sorted = sorted(actual_candidates, key=lambda x: (x['votes'] + x['tie_votes']), reverse=True)
-                    # Check if there is still a tie after adding tie-breaker votes
                     top_score = actual_candidates_sorted[0]['votes'] + actual_candidates_sorted[0]['tie_votes']
                     top_scorers = [c for c in actual_candidates_sorted if (c['votes'] + c['tie_votes']) == top_score]
                     if len(top_scorers) > 1:
-                        # Still a tie!
                         tie = True
                         tied_candidates = top_scorers
                     else:
