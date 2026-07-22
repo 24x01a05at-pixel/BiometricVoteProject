@@ -461,15 +461,24 @@ def results():
     
     total_votes = sum(c['votes'] for c in cands) if cands else 0
     
-    # Winner determination: highest voted candidate that is NOT NOTA and has >0 votes
+    # Exclude NOTA candidates from winner determination
+    actual_candidates = [c for c in cands if c['name'].strip().upper() != 'NOTA']
+    
     winner = None
-    for c in cands:
-        if c['name'].strip().upper() != 'NOTA' and c['votes'] > 0:
-            winner = c
-            break
-            
+    tie = False
+    tied_candidates = []
+    
+    if actual_candidates:
+        max_votes = max(c['votes'] for c in actual_candidates)
+        if max_votes > 0:
+            tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
+            if len(tied_candidates) > 1:
+                tie = True
+            else:
+                winner = tied_candidates[0]
+                
     conn.close()
-    return render_template('results.py', state=state, results=cands, winner=winner, total_votes=total_votes)
+    return render_template('results.py', state=state, results=cands, winner=winner, tie=tie, tied_candidates=tied_candidates, total_votes=total_votes)
 
 @app.route('/export_results')
 def export_results():
@@ -501,14 +510,23 @@ def declare_winner():
     cands = cur.fetchall()
     conn.close()
     
-    # Winner determination: highest voted candidate that is NOT NOTA and has >0 votes
+    actual_candidates = [c for c in cands if c['name'].strip().upper() != 'NOTA']
     winner = None
-    for c in cands:
-        if c['name'].strip().upper() != 'NOTA' and c['votes'] > 0:
-            winner = c
-            break
+    tie = False
+    tied_candidates = []
+    
+    if actual_candidates:
+        max_votes = max(c['votes'] for c in actual_candidates)
+        if max_votes > 0:
+            tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
+            if len(tied_candidates) > 1:
+                tie = True
+            else:
+                winner = tied_candidates[0]
 
     today = datetime.now().strftime("%B %d, %Y")
+    if tie:
+        return render_template('certificate.html', tie=True, tied_candidates=tied_candidates, date=today)
     if not winner:
         return render_template('certificate.html', no_winner=True, date=today)
         

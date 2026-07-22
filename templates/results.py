@@ -9,9 +9,11 @@
     <style>
         body { background: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
         .winner-card { background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%); color: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3); }
+        .tie-card { background: linear-gradient(135deg, #b45309 0%, #78350f 100%); color: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(180, 83, 9, 0.3); }
         .no-winner-card { background: linear-gradient(135deg, #475569 0%, #1e293b 100%); color: white; border-radius: 20px; }
         .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
         .winner-logo-box { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #f59e0b; background: white; margin: 0 auto 1.5rem; }
+        .tie-logo-box { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; background: white; margin: 0 0.5rem 1rem; }
     </style>
 </head>
 <body>
@@ -29,8 +31,29 @@
 
     <div class="container py-5">
         
-        <!-- Winner Highlight Card -->
-        {% if winner and winner.votes > 0 %}
+        <!-- Winner or Tie Highlight Card -->
+        {% if tie %}
+        <div class="card tie-card p-4 p-md-5 text-center mb-5">
+            <div class="d-flex justify-content-center flex-wrap mb-3">
+                {% for tc in tied_candidates %}
+                    {% if tc.logo_path %}
+                        <img src="{{ tc.logo_path }}" class="tie-logo-box" alt="Tied Candidate Logo" title="{{ tc.name }}">
+                    {% else %}
+                        <div class="tie-logo-box d-flex align-items-center justify-content-center text-muted fs-4 fw-bold bg-light"><i class="bi bi-person"></i></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <h5 class="text-uppercase text-warning fw-bold letter-spacing-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Election Tie Declared</h5>
+            <h2 class="fw-bold mb-3">
+                {% for tc in tied_candidates %}
+                    {{ tc.name }}{% if not loop.last %} & {% endif %}
+                {% endfor %}
+            </h2>
+            <p class="fs-5 opacity-90 mx-auto" style="max-width: 700px;">
+                <strong>Tie Election</strong>: Two or more candidates received the same number of votes ({{ tied_candidates[0].votes }} votes each). Candidates will vote again to resolve, or the Admin will decide the leader or reconduct the election.
+            </p>
+        </div>
+        {% elif winner and winner.votes > 0 %}
         <div class="card winner-card p-4 p-md-5 text-center mb-5">
             {% if winner.logo_path %}
                 <img src="{{ winner.logo_path }}" class="winner-logo-box" alt="Winner Logo">

@@ -20,7 +20,19 @@
         <div class="header">Official Election Commission</div>
         <div class="main-title">Certificate of Election</div>
 
-        {% if no_winner %}
+        {% if tie %}
+            <p class="details" style="margin-top: 40px;">This election cycle concluded with an <strong>Election Tie</strong>.</p>
+            <div class="winner-box" style="color: #b45309; border-color: #b45309;">ELECTION TIE DECLARED</div>
+            <p class="details">
+                {% for tc in tied_candidates %}
+                    <strong>{{ tc.name }}</strong> ({{ tc.party_name }}){% if not loop.last %} & {% endif %}
+                {% endfor %}
+                <br>received the same number of votes ({{ tied_candidates[0].votes }} votes each).
+            </p>
+            <p class="details" style="font-size: 18px; color: #7f8c8d;">
+                Tie Election: Candidates will vote again to resolve, or the Admin will decide the leader or reconduct the election.
+            </p>
+        {% elif no_winner %}
             <p class="details" style="margin-top: 40px;">This election cycle concluded with <strong>0 votes cast</strong>.</p>
             <div class="winner-box" style="color: #7f8c8d;">NO WINNER DECLARED</div>
             <p class="details">No candidate received votes to claim victory.</p>
