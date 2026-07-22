@@ -1,23 +1,26 @@
-// Cloud Database Helper using kvdb.io for shared database across devices
-const BUCKET_ID = "r9kN1EmZyp135vLhLnrLy";
-const BASE_URL = `https://kvdb.io/${BUCKET_ID}`;
+// Cloud Database Helper using api.restful-api.dev for shared database across devices
+const DB_ID = "ff8081819f7e10ae019f8af5d42f1557";
+const BASE_URL = `https://api.restful-api.dev/objects/${DB_ID}`;
 
-// Helper to get item from cloud DB with fallback to localStorage
+// Helper to get item from cloud DB
 async function getDB(key, defaultValue) {
     try {
-        const response = await fetch(`${BASE_URL}/${key}`);
-        if (response.status === 404) {
-            // Write default value to cloud on first access
-            await setDB(key, defaultValue);
-            return defaultValue;
-        }
+        const response = await fetch(BASE_URL);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const text = await response.text();
-        const data = JSON.parse(text);
-        localStorage.setItem(key, JSON.stringify(data)); // update local cache
-        return data;
+        const data = await response.json();
+        const state = data.data || {};
+        if (state[key] !== undefined) {
+            localStorage.setItem(key, JSON.stringify(state[key])); // update local cache
+            return state[key];
+        }
+        
+        // Write default value back to cloud if key doesn't exist
+        state[key] = defaultValue;
+        await saveFullState(state);
+        localStorage.setItem(key, JSON.stringify(defaultValue));
+        return defaultValue;
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
         const local = localStorage.getItem(key);
@@ -29,18 +32,36 @@ async function getDB(key, defaultValue) {
 async function setDB(key, value) {
     try {
         localStorage.setItem(key, JSON.stringify(value)); // save local copy
-        const response = await fetch(`${BASE_URL}/${key}`, {
-            method: 'POST',
-            body: JSON.stringify(value),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        
+        // 1. Fetch current full state first
+        const response = await fetch(BASE_URL);
+        if (!response.ok) throw new Error("Fetch state failed");
+        const data = await response.json();
+        const state = data.data || {};
+        
+        // 2. Modify key
+        state[key] = value;
+        
+        // 3. Save full state back
+        await saveFullState(state);
     } catch (err) {
         console.error(`Failed to write key "${key}" to cloud DB:`, err);
+    }
+}
+
+async function saveFullState(state) {
+    const response = await fetch(BASE_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: "BiometricVoteData_Prod",
+            data: state
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
     }
 }
 

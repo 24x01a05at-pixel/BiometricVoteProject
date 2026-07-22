@@ -118,8 +118,8 @@
 
         function checkLiveness(canvasEl) {
             const ctx = canvasEl.getContext('2d');
-            const width = 160;
-            const height = 120;
+            const width = 80;
+            const height = 60;
             
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = width;
@@ -176,6 +176,40 @@
             return true;
         }
 
+        function getFaceSignature(canvasEl) {
+            const width = 10;
+            const height = 10;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            const cropW = canvasEl.width * 0.6;
+            const cropH = canvasEl.height * 0.6;
+            const cropX = (canvasEl.width - cropW) / 2;
+            const cropY = (canvasEl.height - cropH) / 2;
+            
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, width, height);
+            const imgData = tempCtx.getImageData(0, 0, width, height).data;
+            
+            const signature = [];
+            for (let i = 0; i < imgData.length; i += 4) {
+                const gray = Math.round(0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2]);
+                signature.push(gray);
+            }
+            return signature;
+        }
+
+        function calculateDistance(sig1, sig2) {
+            if (!sig1 || !sig2 || sig1.length !== sig2.length) return 999;
+            let sum = 0;
+            for (let i = 0; i < sig1.length; i++) {
+                let diff = sig1[i] - sig2[i];
+                sum += diff * diff;
+            }
+            return Math.sqrt(sum / sig1.length);
+        }
+
         function showAlert(type, message) {
             alertBox.className = `alert alert-${type} mb-4`;
             alertBox.innerText = message;
@@ -215,12 +249,28 @@
                 return;
             }
 
+            // 3. Biometric Similarity Matcher (Checks if face is already registered)
+            const liveSignature = getFaceSignature(canvas);
+            const duplicateVoter = voters.find(v => {
+                if (!v.face_signature) return false;
+                const dist = calculateDistance(liveSignature, v.face_signature);
+                console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
+                return dist < 12.0; 
+            });
+
+            if (duplicateVoter) {
+                showAlert('danger', `Biometric Enrollment Refused: This face matches registered voter '${duplicateVoter.full_name}'!`);
+                resetSubmitButton();
+                return;
+            }
+
             // Add voter to database
             voters.push({
                 id: Date.now(),
                 full_name: name,
                 has_voted: false,
                 capture_path: imageDataUrl,
+                face_signature: liveSignature,
                 candidate_chosen: null,
                 voted_at: null
             });
