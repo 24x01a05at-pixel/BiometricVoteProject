@@ -161,6 +161,66 @@
                 showAlert('danger', "Camera access denied. Please grant camera permission to scan.");
             });
 
+        function checkLiveness(canvasEl) {
+            const ctx = canvasEl.getContext('2d');
+            const width = 160;
+            const height = 120;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasEl, 0, 0, width, height);
+            
+            const imgData = tempCtx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            
+            const gray = new Float32Array(width * height);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            }
+            
+            const laplacian = new Float32Array(width * height);
+            let mean = 0;
+            let count = 0;
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    const val = 
+                        gray[idx - width] + 
+                        gray[idx - 1] +     
+                        -4 * gray[idx] +    
+                        gray[idx + 1] +     
+                        gray[idx + width];  
+                        
+                    laplacian[idx] = val;
+                    mean += val;
+                    count++;
+                }
+            }
+            
+            mean /= count;
+            
+            let variance = 0;
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    const diff = laplacian[idx] - mean;
+                    variance += diff * diff;
+                }
+            }
+            variance /= count;
+            
+            console.log("Laplacian Variance:", variance);
+            
+            // Rejects flat/blurry printed papers (< 5.0) and high-frequency moire pixel grids (> 350.0)
+            if (variance < 5.0 || variance > 350.0) {
+                return false;
+            }
+            return true;
+        }
+
         function showAlert(type, message) {
             alertBox.className = `alert alert-${type} mb-4`;
             alertBox.innerText = message;
@@ -181,6 +241,13 @@
             // Draw image to canvas
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 1. Biometric Liveness Verification
+            if (!checkLiveness(canvas)) {
+                showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.");
+                resetScanButton();
+                return;
+            }
 
             // Re-fetch voters from cloud to check real-time state
             const freshVoters = await getDB('voters', []);
