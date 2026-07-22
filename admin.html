@@ -557,14 +557,14 @@
                                 <label class="form-label small fw-bold">Voting Candidate (Who is voting):</label>
                                 <select id="tie_voter" class="form-select" required>
                                     <option value="" disabled selected>Select Voting Candidate</option>
-                                    \${pendingVoters.map(v => `<option value="\${v.id}">\${v.name} (\${v.party_name})</option>`).join('')}
+                                    ${pendingVoters.map(v => `<option value="${v.id}">${v.name} (${v.party_name})</option>`).join('')}
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Vote For (Tied Candidate):</label>
                                 <select id="tie_target" class="form-select" required>
                                     <option value="" disabled selected>Select Tied Candidate</option>
-                                    \${primaryTied.map(tc => `<option value="\${tc.id}">\${tc.name}</option>`).join('')}
+                                    ${primaryTied.map(tc => `<option value="${tc.id}">${tc.name}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="col-12">
