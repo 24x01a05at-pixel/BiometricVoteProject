@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Electronic Ballot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Outfit', sans-serif; }
+        .ballot-container { max-width: 900px; margin: 0 auto; }
+        .candidate-card { border-radius: 16px; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid #e2e8f0; }
+        .candidate-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .selected-card { border-color: #3b82f6 !important; background-color: #eff6ff; }
+        .logo-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; background: #f1f5f9; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <span class="navbar-brand fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Official Electronic Ballot</span>
+            <span class="text-white small">Voter: <strong id="voter-name-label"></strong></span>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="ballot-container">
+            <h2 class="fw-bold mb-1 text-center">Cast Your Vote</h2>
+            <p class="text-muted text-center mb-5">Select ONE candidate below and click "Cast Official Ballot". Your vote is secure, permanent, and private.</p>
+
+            <form id="ballot-form">
+                <div class="row g-3" id="ballot-candidates">
+                    <!-- Candidates loaded dynamically -->
+                </div>
+
+                <div class="mt-5 text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 py-3 fw-bold shadow-lg" id="btn-cast">
+                        <i class="bi bi-check-circle-fill me-2"></i>CAST OFFICIAL BALLOT
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Client-Side Ballot Voting Script -->
+    <script>
+        const voterId = sessionStorage.getItem('verified_voter_id');
+        const voterName = sessionStorage.getItem('verified_voter_name');
+
+        if (!voterId) {
+            window.location.href = 'booth.html';
+        }
+
+        document.getElementById('voter-name-label').innerText = voterName;
+
+        const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+        const approvedCandidates = candidates.filter(c => c.approved);
+        
+        // Put NOTA at the end
+        approvedCandidates.sort((a, b) => (a.name.toUpperCase() === 'NOTA') - (b.name.toUpperCase() === 'NOTA'));
+
+        const ballotContainer = document.getElementById('ballot-candidates');
+
+        approvedCandidates.forEach(c => {
+            const isNota = (c.name.toUpperCase() === 'NOTA');
+            const col = document.createElement('div');
+            col.className = 'col-12';
+            col.innerHTML = `
+                <div class="card candidate-card p-3" id="card-${c.id}" onclick="selectCandidate(${c.id})">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <input type="radio" name="candidate" value="${c.id}" id="radio-${c.id}" class="form-check-input" style="transform: scale(1.5);">
+                        </div>
+                        <div class="col-auto">
+                            <img src="${c.logo_path || 'static/symbols/nota.png'}" class="logo-img" alt="Logo">
+                        </div>
+                        <div class="col">
+                            <h4 class="fw-bold mb-0">${c.name}</h4>
+                            <span class="text-muted small">${c.party_name}</span>
+                        </div>
+                        <div class="col-auto">
+                            ${isNota ? '<span class="badge bg-secondary">NOTA Option</span>' : '<span class="badge bg-primary">Candidate</span>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            ballotContainer.appendChild(col);
+        });
+
+        let selectedId = null;
+        window.selectCandidate = function(id) {
+            selectedId = id;
+            document.querySelectorAll('.candidate-card').forEach(el => el.classList.remove('selected-card'));
+            document.getElementById(`card-${id}`).classList.add('selected-card');
+            document.getElementById(`radio-${id}`).checked = true;
+        }
+
+        document.getElementById('ballot-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!selectedId) {
+                alert("Please select a candidate to cast your vote!");
+                return;
+            }
+
+            if (!confirm("Are you sure you want to cast your vote for this candidate? This action is permanent!")) {
+                return;
+            }
+
+            // Update candidate vote count
+            const allCandidates = JSON.parse(localStorage.getItem('candidates'));
+            const cIndex = allCandidates.findIndex(c => c.id == selectedId);
+            if (cIndex !== -1) {
+                allCandidates[cIndex].votes = (allCandidates[cIndex].votes || 0) + 1;
+            }
+            localStorage.setItem('candidates', JSON.stringify(allCandidates));
+
+            // Update voter status
+            const allVoters = JSON.parse(localStorage.getItem('voters'));
+            const vIndex = allVoters.findIndex(v => v.id == voterId);
+            if (vIndex !== -1) {
+                const votedCand = allCandidates.find(c => c.id == selectedId);
+                allVoters[vIndex].has_voted = true;
+                allVoters[vIndex].candidate_chosen = votedCand ? votedCand.name : 'Unknown';
+                allVoters[vIndex].voted_at = new Date().toISOString();
+            }
+            localStorage.setItem('voters', JSON.stringify(allVoters));
+
+            // Clear session & Redirect to success
+            sessionStorage.removeItem('verified_voter_id');
+            sessionStorage.removeItem('verified_voter_name');
+
+            window.location.href = 'vote_success.html';
+        });
+    </script>
+</body>
+</html>

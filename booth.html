@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Voting Booth</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: radial-gradient(circle at 50% 50%, #0b0f19 0%, #030712 100%); 
+            color: #f3f4f6; 
+            font-family: 'Outfit', sans-serif; 
+            min-height: 100vh; 
+        }
+        .booth-card { 
+            background: rgba(30, 41, 59, 0.4) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.08) !important; 
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border-radius: 24px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
+        }
+        .webcam-box { 
+            position: relative; 
+            width: 100%; 
+            max-width: 480px; 
+            margin: 0 auto; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            border: 4px solid #10b981; 
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);
+        }
+        video { width: 100%; display: block; }
+        .face-frame { 
+            position: absolute; 
+            top: 15%; 
+            left: 20%; 
+            width: 60%; 
+            height: 70%; 
+            border: 3px dashed #10b981; 
+            border-radius: 50%; 
+            pointer-events: none; 
+            z-index: 5;
+        }
+        @keyframes scanline-green {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 0.4; }
+            100% { top: 100%; opacity: 0.8; }
+        }
+        .scan-bar {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, #10b981, transparent);
+            box-shadow: 0 0 15px #10b981;
+            animation: scanline-green 2.5s infinite linear;
+            pointer-events: none;
+            z-index: 6;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column justify-content-between">
+
+    <nav class="navbar navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-shield-check text-success me-2"></i>Secure Biometric Booth</a>
+            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5 text-center my-auto">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="card booth-card p-4 p-md-5">
+                    <h2 class="fw-bold mb-2"><i class="bi bi-person-bounding-box text-success me-2"></i>Biometric Verification</h2>
+                    <p class="text-secondary mb-4">Look directly into the camera and select your name to verify your biometric identity before entering the ballot.</p>
+
+                    <div id="closed-alert" class="alert alert-danger py-3 fw-bold mb-4 d-none">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>VOTING IS CURRENTLY CLOSED BY ELECTION COMMISSION.
+                    </div>
+
+                    <div id="booth-active-section">
+                        <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
+
+                        <div class="mb-4 text-start">
+                            <label class="form-label small fw-bold text-white">Select Your Registered Name</label>
+                            <select id="voter_select" class="form-select form-select-lg bg-dark text-white border-secondary">
+                                <option value="" disabled selected>-- Select Your Name --</option>
+                                <!-- Loaded dynamically -->
+                            </select>
+                        </div>
+
+                        <div class="webcam-box mb-4">
+                            <video id="webcam" autoplay playsinline></video>
+                            <div class="face-frame"></div>
+                            <div class="scan-bar"></div>
+                        </div>
+                        <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
+
+                        <button id="btn-scan" class="btn btn-success btn-lg px-5 py-3 fw-bold w-100 fs-5">
+                            <i class="bi bi-camera-fill me-2"></i>IDENTIFY FACE & PROCEED TO BALLOT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-Side Biometric Scanning Logic -->
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const alertBox = document.getElementById('alert-box');
+        const voterSelect = document.getElementById('voter_select');
+        const btnScan = document.getElementById('btn-scan');
+        const closedAlert = document.getElementById('closed-alert');
+        const activeSection = document.getElementById('booth-active-section');
+
+        // Check election state
+        const config = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
+        if (config.status !== 'ACTIVE') {
+            closedAlert.classList.remove('d-none');
+            activeSection.classList.add('d-none');
+        }
+
+        // Populate voter select dropdown with eligible voters who haven't voted yet
+        const voters = JSON.parse(localStorage.getItem('voters')) || [];
+        const eligibleVoters = voters.filter(v => !v.has_voted);
+        
+        eligibleVoters.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.innerText = v.full_name;
+            voterSelect.appendChild(opt);
+        });
+
+        if (eligibleVoters.length === 0 && config.status === 'ACTIVE') {
+            showAlert('warning', "All registered voters have already cast their votes!");
+            btnScan.disabled = true;
+        }
+
+        // Access camera
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Camera access denied:", err);
+                showAlert('danger', "Camera access denied. Please grant camera permission to scan.");
+            });
+
+        function showAlert(type, message) {
+            alertBox.className = `alert alert-${type} mb-4`;
+            alertBox.innerText = message;
+            alertBox.classList.remove('d-none');
+        }
+
+        btnScan.addEventListener('click', function() {
+            const voterId = voterSelect.value;
+            if (!voterId) {
+                showAlert('danger', "Please select your registered name to simulate facial recognition scanning.");
+                return;
+            }
+
+            btnScan.disabled = true;
+            btnScan.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
+            alertBox.classList.add('d-none');
+
+            // Draw image to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            setTimeout(() => {
+                const targetVoter = voters.find(v => v.id == voterId);
+                
+                if (!targetVoter) {
+                    showAlert('danger', "Biometric Unrecognized: Face does not match any registered voter.");
+                    resetScanButton();
+                    return;
+                }
+
+                if (targetVoter.has_voted) {
+                    showAlert('danger', `Access Denied: Voter '${targetVoter.full_name}' has already cast a vote.`);
+                    resetScanButton();
+                    return;
+                }
+
+                // Success! Set session voter and redirect
+                sessionStorage.setItem('verified_voter_id', targetVoter.id);
+                sessionStorage.setItem('verified_voter_name', targetVoter.full_name);
+                
+                window.location.href = 'ballot.html';
+            }, 2000);
+        });
+
+        function resetScanButton() {
+            btnScan.disabled = false;
+            btnScan.innerHTML = '<i class="bi bi-camera-fill me-2"></i>IDENTIFY FACE & PROCEED TO BALLOT';
+        }
+    </script>
+</body>
+</html>

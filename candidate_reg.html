@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Nomination Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Outfit', sans-serif; }
+        .card-custom { border: none; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .cand-thumb { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background: #f1f5f9; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-person-badge text-warning me-2"></i>Biometric Vote</a>
+            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        
+        <div class="row g-4 justify-content-center">
+            
+            <!-- Nomination Form -->
+            <div class="col-lg-5">
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-send-fill text-primary me-2"></i>Nominate Candidate</h3>
+                    <p class="text-muted small mb-4">Nominate candidates outside Admin. Requires Admin Control Center approval.</p>
+                    
+                    <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
+
+                    <form id="nomination-form">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Candidate Full Name</label>
+                            <input type="text" id="cand_name" class="form-control form-control-lg" placeholder="e.g. Narendra Modi" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Party Name</label>
+                            <input type="text" id="party_name" class="form-control form-control-lg" placeholder="e.g. BJP" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Party Logo / Symbol</label>
+                            <input type="file" id="logo_file" accept="image/*" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold py-3">
+                            SUBMIT NOMINATION FOR APPROVAL
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Approved Candidate Directory -->
+            <div class="col-lg-6">
+                <div class="card card-custom p-4 bg-white">
+                    <h4 class="fw-bold mb-3"><i class="bi bi-people-fill text-success me-2"></i>Approved Ballot Candidates</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Logo</th>
+                                    <th>Candidate Name</th>
+                                    <th>Party</th>
+                                    <th class="text-end">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="candidate-list">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Client-Side Nomination & Candidate Directory Script -->
+    <script>
+        const form = document.getElementById('nomination-form');
+        const alertBox = document.getElementById('alert-box');
+        const candList = document.getElementById('candidate-list');
+
+        function renderCandidates() {
+            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+            candList.innerHTML = '';
+            
+            candidates.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <img src="${c.logo_path || 'static/symbols/nota.png'}" class="cand-thumb" alt="Logo">
+                    </td>
+                    <td class="fw-bold">${c.name}</td>
+                    <td><span class="badge bg-secondary">${c.party_name}</span></td>
+                    <td class="text-end">
+                        ${c.approved ? '<span class="badge bg-success">On Ballot</span>' : '<span class="badge bg-warning text-dark">Pending Admin Approval</span>'}
+                    </td>
+                `;
+                candList.appendChild(tr);
+            });
+        }
+        renderCandidates();
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('cand_name').value.trim();
+            const party = document.getElementById('party_name').value.trim();
+            const logoInput = document.getElementById('logo_file');
+
+            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+
+            // Duplicate Check
+            const exists = candidates.some(c => c.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                alertBox.className = "alert alert-danger mb-4";
+                alertBox.innerText = `Nomination Rejected: A candidate named '${name}' is already nominated or registered.`;
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            // Convert image to Base64
+            const file = logoInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(evt) {
+                const base64Image = evt.target.result;
+                
+                candidates.push({
+                    id: Date.now(),
+                    name: name,
+                    party_name: party,
+                    logo_path: base64Image,
+                    votes: 0,
+                    tie_votes: 0,
+                    approved: false,
+                    has_tie_voted: false
+                });
+
+                localStorage.setItem('candidates', JSON.stringify(candidates));
+                
+                alertBox.className = "alert alert-success mb-4";
+                alertBox.innerText = `Nomination submitted for '${name}' (${party}). Pending Admin Approval!`;
+                alertBox.classList.remove('d-none');
+                
+                form.reset();
+                renderCandidates();
+            };
+            
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>

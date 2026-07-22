@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certified Winner Certificate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; padding: 20px; }
+        .cert-border { 
+            background: #fff;
+            border: 20px double #b45309; 
+            padding: 40px; 
+            max-width: 800px; 
+            width: 100%; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+            position: relative;
+            background-image: radial-gradient(rgba(180, 83, 9, 0.03) 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+        .cert-title { font-family: 'Cinzel', serif; font-weight: 800; color: #78350f; letter-spacing: 2px; }
+        .winner-name { font-family: 'Cinzel', serif; font-weight: 800; border-bottom: 2px solid #b45309; padding-bottom: 10px; display: inline-block; color: #1e3a8a; }
+        .cert-stamp { width: 100px; height: 100px; border-radius: 50%; border: 4px double #b45309; display: flex; align-items: center; justify-content: center; color: #b45309; font-weight: 800; transform: rotate(-15deg); margin: 0 auto; }
+        .cand-logo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #b45309; background: #f8fafc; }
+        .tie-logo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #b45309; background: #f8fafc; margin: 0 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="cert-border text-center" id="cert-box">
+        <!-- Certificate layout loaded dynamically -->
+    </div>
+
+    <script>
+        const config = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
+        const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+
+        const certBox = document.getElementById('cert-box');
+        const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        if (config.status !== 'CLOSED') {
+            certBox.innerHTML = `
+                <div class="py-5">
+                    <i class="bi bi-lock-fill text-danger display-1 mb-4"></i>
+                    <h2 class="fw-bold cert-title">Certificate Locked</h2>
+                    <p class="text-muted fs-5 mt-3">The official winner certificate is sealed and locked. It will automatically generate and release once the election has been officially closed.</p>
+                    <a href="results.html" class="btn btn-outline-dark mt-4">Back to Results</a>
+                </div>
+            `;
+        } else {
+            generateCertificate();
+        }
+
+        function generateCertificate() {
+            const approved = candidates.filter(c => c.approved);
+            const actual = approved.filter(c => c.name.toUpperCase() !== 'NOTA');
+
+            let winner = null;
+            let tie = false;
+            let tiedCandidates = [];
+            let pendingCount = 0;
+
+            if (actual.length > 0) {
+                const maxVotes = Math.max(...actual.map(c => c.votes || 0));
+                
+                if (maxVotes > 0) {
+                    const primaryTied = actual.filter(c => c.votes === maxVotes);
+                    
+                    if (primaryTied.length > 1) {
+                        const pendingVoters = actual.filter(c => !c.has_tie_voted);
+                        pendingCount = pendingVoters.length;
+                        
+                        if (pendingCount > 0) {
+                            tie = true;
+                            tiedCandidates = primaryTied;
+                        } else {
+                            const sortedActual = [...actual].sort((a, b) => {
+                                return ((b.votes || 0) + (b.tie_votes || 0)) - ((a.votes || 0) + (a.tie_votes || 0));
+                            });
+                            const topScore = (sortedActual[0].votes || 0) + (sortedActual[0].tie_votes || 0);
+                            const topScorers = sortedActual.filter(c => ((c.votes || 0) + (c.tie_votes || 0)) === topScore);
+                            
+                            if (topScorers.length > 1) {
+                                tie = true;
+                                tiedCandidates = topScorers;
+                            } else {
+                                winner = sortedActual[0];
+                            }
+                        }
+                    } else {
+                        winner = primaryTied[0];
+                    }
+                }
+            }
+
+            if (tie) {
+                let logoImgs = '';
+                tiedCandidates.forEach(tc => {
+                    logoImgs += `<img src="${tc.logo_path || 'static/symbols/nota.png'}" class="tie-logo" alt="Logo">`;
+                });
+                
+                certBox.innerHTML = `
+                    <div class="mb-3 text-warning"><i class="bi bi-award-fill display-3"></i></div>
+                    <h1 class="cert-title mb-1">CERTIFICATE OF TIE ELECTION</h1>
+                    <p class="text-uppercase tracking-widest text-muted small mb-4">Election Commission Certificate</p>
+                    <p class="fs-5">This document officially certifies that a tie has occurred between:</p>
+                    
+                    <div class="my-4">
+                        <div class="d-flex justify-content-center align-items-center mb-3">${logoImgs}</div>
+                        <h2 class="winner-name fs-1">${tiedCandidates.map(c => c.name).join(' & ')}</h2>
+                        <p class="text-muted fs-5 mt-2">${tiedCandidates.map(c => c.party_name).join(' and ')}</p>
+                    </div>
+
+                    <p class="fs-6 px-md-5 mt-4 text-muted">
+                        ${pendingCount > 0 
+                            ? "Tie-breaker candidate voting is currently active. The official winner certificate will be generated after all approved candidates cast their tie-breaker votes."
+                            : "Two or more candidates received the same number of votes. Candidates will vote again to resolve, or the Admin will decide the leader or reconduct the election."}
+                    </p>
+
+                    <div class="row align-items-end mt-5 pt-3">
+                        <div class="col-4 text-start">
+                            <span class="d-block border-top border-dark pt-1 small text-muted">DATE</span>
+                            <strong>${today}</strong>
+                        </div>
+                        <div class="col-4">
+                            <div class="cert-stamp">TIE</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <span class="d-block border-top border-dark pt-1 small text-muted">CHAIRMAN</span>
+                            <strong>Election Commission</strong>
+                        </div>
+                    </div>
+                `;
+            } else if (winner && ((winner.votes || 0) + (winner.tie_votes || 0)) > 0) {
+                const totalVotes = (winner.votes || 0) + (winner.tie_votes || 0);
+                certBox.innerHTML = `
+                    <div class="mb-3 text-warning"><i class="bi bi-trophy-fill display-3"></i></div>
+                    <h1 class="cert-title mb-1">CERTIFICATE OF ELECTION</h1>
+                    <p class="text-uppercase tracking-widest text-muted small mb-4">Official Winner Declaration</p>
+                    <p class="fs-5">This document officially certifies the election of:</p>
+                    
+                    <div class="my-4">
+                        <img src="${winner.logo_path || 'static/symbols/nota.png'}" class="cand-logo mb-3" alt="Winner Logo">
+                        <br>
+                        <h2 class="winner-name fs-1">${winner.name}</h2>
+                        <p class="text-muted fs-5 mt-2">Representing the <strong>${winner.party_name}</strong> Party</p>
+                    </div>
+
+                    <p class="fs-5 px-md-5 mt-4">
+                        Having received a certified majority tally of <strong>${totalVotes}</strong> total votes cast during the official election cycle.
+                    </p>
+
+                    <div class="row align-items-end mt-5 pt-3">
+                        <div class="col-4 text-start">
+                            <span class="d-block border-top border-dark pt-1 small text-muted">DATE</span>
+                            <strong>${today}</strong>
+                        </div>
+                        <div class="col-4">
+                            <div class="cert-stamp">PASSED</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <span class="d-block border-top border-dark pt-1 small text-muted">CHAIRMAN</span>
+                            <strong>Election Commission</strong>
+                        </div>
+                    </div>
+                `;
+            } else {
+                certBox.innerHTML = `
+                    <div class="py-5">
+                        <i class="bi bi-question-circle text-muted display-1 mb-4"></i>
+                        <h2 class="fw-bold cert-title">No Certificate Generated</h2>
+                        <p class="text-muted fs-5 mt-3">No winner certificate was generated because no votes were cast in this election cycle.</p>
+                        <a href="results.html" class="btn btn-outline-dark mt-4">Back to Results</a>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

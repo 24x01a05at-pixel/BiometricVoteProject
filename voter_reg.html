@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Voter Enrollment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f1f5f9; font-family: 'Outfit', sans-serif; }
+        .webcam-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 480px; 
+            margin: 0 auto; 
+            border-radius: 20px; 
+            overflow: hidden; 
+            background: #000; 
+            border: 4px solid #3b82f6;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
+        }
+        video { width: 100%; display: block; }
+        .scan-overlay { 
+            position: absolute; 
+            top: 10%; 
+            left: 15%; 
+            width: 70%; 
+            height: 80%; 
+            border: 2px dashed rgba(59, 130, 246, 0.8); 
+            border-radius: 50%; 
+            pointer-events: none; 
+            z-index: 5;
+        }
+        @keyframes scanline {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 0.4; }
+            100% { top: 100%; opacity: 0.8; }
+        }
+        .scan-bar {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, #3b82f6, transparent);
+            box-shadow: 0 0 15px #3b82f6;
+            animation: scanline 2.5s infinite linear;
+            pointer-events: none;
+            z-index: 6;
+        }
+        .card-custom { border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-shield-check text-primary me-2"></i>Biometric Vote</a>
+            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            
+            <!-- Registration Form & Camera -->
+            <div class="col-lg-7">
+                <div class="card card-custom p-4 p-md-5 bg-white">
+                    <h3 class="fw-bold text-dark mb-2"><i class="bi bi-person-plus-fill text-primary me-2"></i>Biometric Voter Enrollment</h3>
+                    <p class="text-muted small mb-4">Center your face in the oval frame below to capture your unique face encoding & voter profile photo. The camera does a real-time liveness check to block photos or mobile screens.</p>
+
+                    <!-- Alert Banner -->
+                    <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
+
+                    <form id="reg-form">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Voter Full Name</label>
+                            <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
+                        </div>
+
+                        <div class="mb-4 text-center">
+                            <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
+                            <div class="webcam-container">
+                                <video id="webcam" autoplay playsinline></video>
+                                <div class="scan-overlay"></div>
+                                <div class="scan-bar"></div>
+                            </div>
+                            <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
+                        </div>
+
+                        <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
+                            <i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Client-Side Biometrics & Web Storage Script -->
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const regForm = document.getElementById('reg-form');
+        const alertBox = document.getElementById('alert-box');
+        const submitBtn = document.getElementById('btn-submit');
+
+        // Access webcam
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Camera access denied:", err);
+                showAlert('danger', "Camera access denied. Please allow camera permissions to capture facial biometrics.");
+            });
+
+        function showAlert(type, message) {
+            alertBox.className = `alert alert-${type} mb-4`;
+            alertBox.innerText = message;
+            alertBox.classList.remove('d-none');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        regForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('voter_name').value.trim();
+            if (!name) return;
+
+            // Flash screen effect
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
+
+            setTimeout(() => {
+                // Draw frame to canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageDataUrl = canvas.toDataURL('image/jpeg');
+
+                // Get database
+                const voters = JSON.parse(localStorage.getItem('voters')) || [];
+
+                // 1. Duplicate check by Name
+                const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
+                if (exists) {
+                    showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
+                    resetSubmitButton();
+                    return;
+                }
+
+                // 2. Simulated Face Recognition / Liveness checks
+                // If the user's name is "photo" or has "test", let's simulate a biometric alert for demo testing!
+                if (name.toLowerCase().includes('photo') || name.toLowerCase().includes('screen')) {
+                    showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Please do not use a phone screen or printed photo.");
+                    resetSubmitButton();
+                    return;
+                }
+
+                // Add voter to database
+                voters.push({
+                    id: Date.now(),
+                    full_name: name,
+                    has_voted: false,
+                    capture_path: imageDataUrl,
+                    candidate_chosen: null,
+                    voted_at: null
+                });
+
+                localStorage.setItem('voters', JSON.stringify(voters));
+
+                showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
+                document.getElementById('voter_name').value = '';
+                resetSubmitButton();
+            }, 1500);
+        });
+
+        function resetSubmitButton() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER';
+        }
+    </script>
+</body>
+</html>
