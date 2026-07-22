@@ -139,18 +139,12 @@
                 return;
             }
 
-            // Convert image to Base64
-            const file = logoInput.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = async function(evt) {
-                const base64Image = evt.target.result;
-                
+            const submitNomination = async (base64Image) => {
                 candidates.push({
                     id: Date.now(),
                     name: name,
                     party_name: party,
-                    logo_path: base64Image,
+                    logo_path: base64Image || 'static/symbols/nota.png',
                     votes: 0,
                     tie_votes: 0,
                     approved: false,
@@ -168,9 +162,15 @@
                 form.reset();
                 renderCandidates();
             };
-            
+
             if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    await submitNomination(evt.target.result);
+                };
                 reader.readAsDataURL(file);
+            } else {
+                await submitNomination(null);
             }
         });
     </script>

@@ -125,7 +125,13 @@
             tempCanvas.width = width;
             tempCanvas.height = height;
             const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(canvasEl, 0, 0, width, height);
+            
+            // Analyze only the center 60% face region, ignoring flat background walls
+            const cropW = canvasEl.width * 0.6;
+            const cropH = canvasEl.height * 0.6;
+            const cropX = (canvasEl.width - cropW) / 2;
+            const cropY = (canvasEl.height - cropH) / 2;
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, width, height);
             
             const imgData = tempCtx.getImageData(0, 0, width, height);
             const data = imgData.data;
@@ -169,8 +175,8 @@
             
             console.log("Laplacian Variance:", variance);
             
-            // Rejects flat/blurry printed papers (< 5.0) and high-frequency moire pixel grids (> 350.0)
-            if (variance < 5.0 || variance > 350.0) {
+            // Rejects flat/blurry printed papers (< 3.0) and high-frequency moire pixel grids (> 350.0)
+            if (variance < 3.0 || variance > 350.0) {
                 return false;
             }
             return true;
