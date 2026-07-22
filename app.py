@@ -75,6 +75,36 @@ def decode_base64_image(base64_str):
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     return frame, rgb_frame
 
+def check_liveness(frame, face_location):
+    top, right, bottom, left = face_location
+    h, w, _ = frame.shape
+    top = max(0, top)
+    left = max(0, left)
+    bottom = min(h, bottom)
+    right = min(w, right)
+    
+    face_image = frame[top:bottom, left:right]
+    if face_image.size == 0:
+        return True, None
+        
+    gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    
+    hsv = cv2.cvtColor(face_image, cv2.COLOR_BGR2HSV)
+    v = hsv[:, :, 2]
+    v_std = float(np.std(v))
+    
+    print(f"[LIVENESS CHECK] Laplacian Var: {laplacian_var:.2f}, V-Std: {v_std:.2f}")
+    
+    if laplacian_var < 80:
+         return False, "Biometric Spoof Detected: Image is too blurry or flat. Please present a live face in a well-lit environment."
+    if laplacian_var > 780:
+         return False, "Biometric Spoof Detected: Screen/Print pattern detected. Please use your physical face directly."
+    if v_std < 11.0:
+         return False, "Biometric Spoof Detected: Flat illumination detected. Photos or printouts are not eligible."
+         
+    return True, None
+
 def check_duplicate_face(rgb_frame):
     encodings = face_recognition.face_encodings(rgb_frame)
     if not encodings:
@@ -143,8 +173,16 @@ def voter_register():
             
         try:
             frame, rgb_frame = decode_base64_image(image_data)
-            is_dup, err_msg, encoding = check_duplicate_face(rgb_frame)
             
+            face_locations = face_recognition.face_locations(rgb_frame)
+            if not face_locations:
+                return jsonify({'status': 'fail', 'message': 'No face detected in the image. Please align your face clearly with the camera.'})
+                
+            is_live, live_err = check_liveness(frame, face_locations[0])
+            if not is_live:
+                return jsonify({'status': 'fail', 'message': live_err})
+                
+            is_dup, err_msg, encoding = check_duplicate_face(rgb_frame)
             if is_dup:
                 return jsonify({'status': 'fail', 'message': err_msg})
                 
@@ -383,12 +421,16 @@ def run_booth():
         
     try:
         frame, rgb_frame = decode_base64_image(image_data)
-        encodings = face_recognition.face_encodings(rgb_frame)
         
-        if not encodings:
+        face_locations = face_recognition.face_locations(rgb_frame)
+        if not face_locations:
             return jsonify({'status': 'fail', 'message': 'No face detected. Please face the camera directly.'})
             
-        user_enc = encodings[0]
+        is_live, live_err = check_liveness(frame, face_locations[0])
+        if not is_live:
+            return jsonify({'status': 'fail', 'message': live_err})
+            
+        user_enc = face_recognition.face_encodings(rgb_frame, known_face_locations=face_locations)[0]
         
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
