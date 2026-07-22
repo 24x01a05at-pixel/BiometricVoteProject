@@ -175,59 +175,30 @@ def candidate_register():
     message = None
     msg_type = 'success'
     
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    
-    # Check if there is an active tie
-    cur.execute("SELECT id, name, party_name, logo_path, COALESCE(votes, 0) AS votes FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
-    cands = cur.fetchall()
-    
-    actual_candidates = [c for c in cands if c['name'].strip().upper() != 'NOTA']
-    tie = False
-    tied_candidates = []
-    
-    print("DEBUG CANDIDATE REGISTER ROUTE - ELECTION STATUS:", state['status'])
-    print("DEBUG CANDIDATE REGISTER ROUTE - ACTUAL CANDIDATES:", len(actual_candidates))
-    
-    if state['status'] == 'CLOSED' and actual_candidates:
-        max_votes = max(c['votes'] for c in actual_candidates)
-        print("DEBUG CANDIDATE REGISTER ROUTE - MAX VOTES:", max_votes)
-        tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
-        print("DEBUG CANDIDATE REGISTER ROUTE - TIED CANDIDATES:", len(tied_candidates))
-        if len(tied_candidates) > 1:
-            tie = True
-            
-    print("DEBUG CANDIDATE REGISTER ROUTE - TIE VALUE:", tie)
-
-    if tie:
-        if request.method == 'POST' and 'vote_candidate_id' in request.form:
-            c_id = request.form.get('vote_candidate_id')
-            cur.execute("UPDATE candidates SET votes = COALESCE(votes, 0) + 1 WHERE id = %s", (c_id,))
-            conn.commit()
-            conn.close()
-            return redirect('/results')
-            
-        conn.close()
-        return render_template('candidate_reg.html', state=state, tie=True, tied_candidates=tied_candidates)
-
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         party = request.form.get('party', '').strip()
         
         if name and party:
+            conn = get_db_connection()
+            cur = conn.cursor()
             cur.execute("SELECT id FROM candidates WHERE LOWER(name) = LOWER(%s)", (name,))
             if cur.fetchone():
                 message = f"Nomination Rejected: A candidate named '{name}' is already nominated or registered."
                 msg_type = 'danger'
+                conn.close()
             else:
                 logo_path = save_uploaded_logo(request.files.get('logo_file'))
                 cur.execute("INSERT INTO candidates (name, party_name, logo_path, votes, approved) VALUES (%s, %s, %s, 0, FALSE)", (name, party, logo_path))
                 conn.commit()
+                conn.close()
                 message = f"Nomination submitted for '{name}' ({party}). Pending Admin Approval!"
         else:
             message = "Candidate Name and Party Name are required."
             msg_type = 'danger'
             
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute("SELECT name, party_name, logo_path, approved FROM candidates ORDER BY id DESC")
     all_cands = cur.fetchall()
     conn.close()
@@ -251,7 +222,13 @@ def admin_portal():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        if action == 'change_password':
+        if action == 'candidate_tie_vote':
+            target_id = request.form.get('target_candidate_id')
+            cur.execute("UPDATE candidates SET votes = COALESCE(votes, 0) + 1 WHERE id = %s", (target_id,))
+            conn.commit()
+            success_msg = "Tie-breaker vote successfully registered!"
+            
+        elif action == 'change_password':
             curr_p = request.form.get('current_password', '')
             new_p = request.form.get('new_password', '').strip()
             conf_p = request.form.get('confirm_password', '').strip()
@@ -352,9 +329,21 @@ def admin_portal():
     
     cur.execute("SELECT id, full_name, has_voted, candidate_chosen, voted_at, capture_path FROM voters ORDER BY id DESC")
     voters = cur.fetchall()
+    
+    # Check for active tie-breaker voting requirements
+    actual_candidates = [c for c in approved_cands if c['name'].strip().upper() != 'NOTA']
+    tie = False
+    tied_candidates = []
+    if state['status'] == 'CLOSED' and actual_candidates:
+        max_votes = max(c['votes'] for c in actual_candidates)
+        if max_votes > 0:
+            tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
+            if len(tied_candidates) > 1:
+                tie = True
+                
     conn.close()
 
-    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters)
+    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters, tie=tie, tied_candidates=tied_candidates)
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -490,7 +479,6 @@ def results():
     
     total_votes = sum(c['votes'] for c in cands) if cands else 0
     
-    # Exclude NOTA candidates from winner determination
     actual_candidates = [c for c in cands if c['name'].strip().upper() != 'NOTA']
     
     winner = None

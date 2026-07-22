@@ -215,8 +215,49 @@
         {% endif %}
 
         <div class="row g-4">
-            <!-- Approved Candidates & Direct Add -->
+            <!-- Left Side: Add Candidate OR Candidate Tie-Breaker Voting -->
             <div class="col-lg-6">
+                {% if tie %}
+                <!-- Candidate Tie-Breaker Voting block inside Admin -->
+                <div class="card card-custom p-4 bg-white mb-4 border border-warning border-3">
+                    <h4 class="fw-bold mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Candidate Tie-Breaker Voting</h4>
+                    <p class="text-muted small">Election is TIED. Admin will register votes from approved candidates to resolve the tie between top candidates who got the same highest votes.</p>
+                    
+                    <form action="/admin" method="POST" class="row g-3">
+                        <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
+                        <input type="hidden" name="admin_action" value="candidate_tie_vote">
+                        
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Voting Candidate (Who is voting):</label>
+                            <select name="voting_candidate_id" class="form-select" required>
+                                <option value="" disabled selected>Select Voting Candidate</option>
+                                {% for c in approved_candidates %}
+                                    {% if c.name.upper() != 'NOTA' %}
+                                        <option value="{{ c.id }}">{{ c.name }} ({{ c.party_name }})</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Vote For (Tied Candidate):</label>
+                            <select name="target_candidate_id" class="form-select" required>
+                                <option value="" disabled selected>Select Tied Candidate</option>
+                                {% for tc in tied_candidates %}
+                                    <option value="{{ tc.id }}">{{ tc.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-warning w-100 fw-bold py-2 mt-2" onclick="return confirm('Register candidate tie-breaker vote?')">
+                                <i class="bi bi-check-circle-fill me-1"></i>SUBMIT TIE-BREAKER VOTE
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Regular Add Approved Candidate -->
                 <div class="card card-custom p-4 bg-white mb-4">
                     <h4 class="fw-bold mb-3"><i class="bi bi-person-plus-fill text-primary me-2"></i>Directly Add Approved Candidate</h4>
                     <form action="/admin" method="POST" enctype="multipart/form-data" class="row g-2">
@@ -236,6 +277,7 @@
                         </div>
                     </form>
                 </div>
+                {% endif %}
 
                 <div class="card card-custom p-4 bg-white">
                     <h4 class="fw-bold mb-3"><i class="bi bi-award-fill text-success me-2"></i>Approved Ballot Candidates</h4>
