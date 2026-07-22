@@ -202,7 +202,7 @@ def voter_register():
             
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("SELECT id, full_name, has_voted, capture_path FROM voters ORDER BY id DESC")
+    cur.execute("SELECT id, full_name, has_voted, capture_path FROM voters ORDER BY LOWER(full_name) ASC")
     voters = cur.fetchall()
     conn.close()
     return render_template('voter_reg.html', state=state, voters=voters)
@@ -366,7 +366,7 @@ def admin_portal():
     cur.execute("SELECT id, name, party_name, logo_path FROM candidates WHERE approved = FALSE ORDER BY id DESC")
     pending_cands = cur.fetchall()
     
-    cur.execute("SELECT id, full_name, has_voted, candidate_chosen, voted_at, capture_path FROM voters ORDER BY id DESC")
+    cur.execute("SELECT id, full_name, has_voted, candidate_chosen, voted_at, capture_path FROM voters ORDER BY LOWER(full_name) ASC")
     voters = cur.fetchall()
     
     # Check for active tie-breaker voting requirements
