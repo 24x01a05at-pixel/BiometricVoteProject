@@ -236,12 +236,12 @@
 
     <!-- Client-Side Admin Dashboard Controller Script -->
     <script>
-        if (!localStorage.getItem('election_config')) {
-            localStorage.setItem('election_config', JSON.stringify({
-                status: 'NOT_STARTED',
-                end_time: null,
-                admin_password: 'admin123'
-            }));
+        let initialConfig = JSON.parse(localStorage.getItem('election_config')) || {};
+        if (!initialConfig.admin_password) {
+            initialConfig.admin_password = 'admin123';
+            initialConfig.status = initialConfig.status || 'NOT_STARTED';
+            initialConfig.end_time = initialConfig.end_time || null;
+            localStorage.setItem('election_config', JSON.stringify(initialConfig));
         }
         if (!localStorage.getItem('candidates')) {
             localStorage.setItem('candidates', JSON.stringify([
@@ -274,9 +274,10 @@
         loginForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const password = document.getElementById('login_password').value;
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
+            const currentConfig = JSON.parse(localStorage.getItem('election_config')) || {};
+            const adminPwd = currentConfig.admin_password || 'admin123';
             
-            if (password === currentConfig.admin_password) {
+            if (password === adminPwd) {
                 sessionStorage.setItem('admin_logged_in', 'true');
                 showDashboard();
             } else {
