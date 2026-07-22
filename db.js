@@ -1,26 +1,116 @@
-// Cloud Database Helper using api.restful-api.dev for shared database across devices
-const DB_ID = "ff8081819f7e10ae019f8af5d42f1557";
-const BASE_URL = `https://api.restful-api.dev/objects/${DB_ID}`;
+// Cloud Database Helper using keyvalue.immanuel.co for shared database across devices
+const APP_KEY = "tbeuf3z3";
+const BASE_URL = `https://keyvalue.immanuel.co/api/KeyVal`;
+
+// Safe Base64 Helper for URL-safe path values in IIS
+function encodeSafeBase64(str) {
+    return btoa(unescape(encodeURIComponent(str)))
+        .replace(/\//g, '_')
+        .replace(/\+/g, '-')
+        .replace(/=/g, '');
+}
+
+function decodeSafeBase64(str) {
+    let base64 = str.replace(/_/g, '/').replace(/-/g, '+');
+    while (base64.length % 4) {
+        base64 += '=';
+    }
+    return decodeURIComponent(escape(atob(base64)));
+}
+
+async function getCloudValue(key) {
+    try {
+        const response = await fetch(`${BASE_URL}/GetValue/${APP_KEY}/${key}`);
+        if (!response.ok) return null;
+        const resText = await response.text();
+        if (!resText || resText === "null") return null;
+        const encodedVal = JSON.parse(resText);
+        if (!encodedVal) return null;
+        return decodeSafeBase64(encodedVal);
+    } catch (e) {
+        console.error("Read error:", e);
+        return null;
+    }
+}
+
+async function setCloudValue(key, valueStr) {
+    try {
+        const encodedVal = encodeSafeBase64(valueStr);
+        const response = await fetch(`${BASE_URL}/UpdateValue/${APP_KEY}/${key}/${encodedVal}`, {
+            method: 'POST',
+            headers: {
+                'Content-Length': '0'
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`Write failed: ${response.status}`);
+        }
+    } catch (e) {
+        console.error("Write error:", e);
+    }
+}
+
+// Compress / Downscale image to fit 1024 limit
+function compressImage(base64Str, maxWidth, maxHeight, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+            if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => {
+            resolve(base64Str);
+        };
+    });
+}
 
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue) {
     try {
-        const response = await fetch(BASE_URL);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (key === 'voters') {
+            const listStr = await getCloudValue('voters_list');
+            if (listStr === null) {
+                // Initialize empty voters list in cloud
+                await setCloudValue('voters_list', '');
+                localStorage.setItem('voters', JSON.stringify([]));
+                return [];
+            }
+            const ids = listStr.split(',').filter(Boolean);
+            const voters = [];
+            for (const id of ids) {
+                const voterStr = await getCloudValue(`voter_${id}`);
+                if (voterStr) {
+                    voters.push(JSON.parse(voterStr));
+                }
+            }
+            localStorage.setItem('voters', JSON.stringify(voters));
+            return voters;
+        } else {
+            const valStr = await getCloudValue(key);
+            if (valStr === null) {
+                // Initialize default value in cloud
+                await setCloudValue(key, JSON.stringify(defaultValue));
+                localStorage.setItem(key, JSON.stringify(defaultValue));
+                return defaultValue;
+            }
+            localStorage.setItem(key, valStr);
+            return JSON.parse(valStr);
         }
-        const data = await response.json();
-        const state = data.data || {};
-        if (state[key] !== undefined) {
-            localStorage.setItem(key, JSON.stringify(state[key])); // update local cache
-            return state[key];
-        }
-        
-        // Write default value back to cloud if key doesn't exist
-        state[key] = defaultValue;
-        await saveFullState(state);
-        localStorage.setItem(key, JSON.stringify(defaultValue));
-        return defaultValue;
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
         const local = localStorage.getItem(key);
@@ -31,37 +121,23 @@ async function getDB(key, defaultValue) {
 // Helper to write item to cloud DB
 async function setDB(key, value) {
     try {
-        localStorage.setItem(key, JSON.stringify(value)); // save local copy
-        
-        // 1. Fetch current full state first
-        const response = await fetch(BASE_URL);
-        if (!response.ok) throw new Error("Fetch state failed");
-        const data = await response.json();
-        const state = data.data || {};
-        
-        // 2. Modify key
-        state[key] = value;
-        
-        // 3. Save full state back
-        await saveFullState(state);
+        localStorage.setItem(key, JSON.stringify(value));
+        if (key === 'voters') {
+            const ids = [];
+            for (const voter of value) {
+                ids.push(voter.id);
+                let cloudVoter = { ...voter };
+                if (cloudVoter.capture_path && cloudVoter.capture_path.length > 2000) {
+                    cloudVoter.capture_path = await compressImage(cloudVoter.capture_path, 40, 40, 0.4);
+                }
+                await setCloudValue(`voter_${voter.id}`, JSON.stringify(cloudVoter));
+            }
+            await setCloudValue('voters_list', ids.join(','));
+        } else {
+            await setCloudValue(key, JSON.stringify(value));
+        }
     } catch (err) {
         console.error(`Failed to write key "${key}" to cloud DB:`, err);
-    }
-}
-
-async function saveFullState(state) {
-    const response = await fetch(BASE_URL, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            name: "BiometricVoteData_Prod",
-            data: state
-        })
-    });
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
     }
 }
 
