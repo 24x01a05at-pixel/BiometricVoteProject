@@ -43,17 +43,28 @@
                     {% endif %}
                 {% endfor %}
             </div>
-            <h5 class="text-uppercase text-warning fw-bold letter-spacing-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Election Tie Declared</h5>
+            <h5 class="text-uppercase text-warning fw-bold letter-spacing-2">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                {% if pending_count > 0 %}
+                    Tie-breaker Voting in Progress
+                {% else %}
+                    Election Tie Declared
+                {% endif %}
+            </h5>
             <h2 class="fw-bold mb-3">
                 {% for tc in tied_candidates %}
                     {{ tc.name }}{% if not loop.last %} & {% endif %}
                 {% endfor %}
             </h2>
             <p class="fs-5 opacity-90 mx-auto" style="max-width: 700px;">
-                <strong>Tie Election</strong>: Two or more candidates received the same number of votes ({{ tied_candidates[0].votes }} votes each). Candidates will vote again to resolve, or the Admin will decide the leader or reconduct the election.
+                {% if pending_count > 0 %}
+                    <strong>Tie-breaker in progress</strong>: {{ pending_count }} candidates are pending to vote. The final winner will not be declared until all candidates complete voting.
+                {% else %}
+                    <strong>Tie Election</strong>: Candidates received the same number of votes. Candidates will vote again to resolve, or the Admin will decide the leader or reconduct the election.
+                {% endif %}
             </p>
         </div>
-        {% elif winner and winner.votes > 0 %}
+        {% elif winner and (winner.votes + winner.tie_votes) > 0 %}
         <div class="card winner-card p-4 p-md-5 text-center mb-5">
             {% if winner.logo_path %}
                 <img src="{{ winner.logo_path }}" class="winner-logo-box" alt="Winner Logo">
@@ -66,7 +77,7 @@
             <h1 class="display-4 fw-extrabold mb-2">{{ winner.name }}</h1>
             <p class="fs-4 text-light opacity-75 mb-3">{{ winner.party_name }}</p>
             <div class="d-inline-block bg-white text-dark fw-bold fs-5 px-4 py-2 rounded-pill">
-                {{ winner.votes }} Certified Votes
+                {{ winner.votes + winner.tie_votes }} Certified Votes
             </div>
         </div>
         {% else %}
@@ -89,6 +100,8 @@
                             <th>Rank</th>
                             <th>Candidate Name</th>
                             <th>Party Name</th>
+                            <th class="text-end">Primary Votes</th>
+                            <th class="text-end">Tie-Breaker Votes</th>
                             <th class="text-end">Total Votes</th>
                         </tr>
                     </thead>
@@ -98,10 +111,12 @@
                             <td class="fw-bold">#{{ loop.index }}</td>
                             <td class="fw-bold text-dark">{{ r.name }}</td>
                             <td><span class="badge bg-secondary fs-6">{{ r.party_name }}</span></td>
-                            <td class="text-end fw-extrabold text-primary">{{ r.votes }} Votes</td>
+                            <td class="text-end text-primary">{{ r.votes }}</td>
+                            <td class="text-end text-warning">+{{ r.tie_votes }}</td>
+                            <td class="text-end fw-extrabold text-success">{{ r.votes + r.tie_votes }} Votes</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">No candidates listed.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted">No candidates listed.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

@@ -223,10 +223,13 @@ def admin_portal():
         cur = conn.cursor()
         
         if action == 'candidate_tie_vote':
+            voter_id = request.form.get('voting_candidate_id')
             target_id = request.form.get('target_candidate_id')
-            cur.execute("UPDATE candidates SET votes = COALESCE(votes, 0) + 1 WHERE id = %s", (target_id,))
-            conn.commit()
-            success_msg = "Tie-breaker vote successfully registered!"
+            if voter_id and target_id:
+                cur.execute("UPDATE candidates SET has_tie_voted = TRUE WHERE id = %s", (voter_id,))
+                cur.execute("UPDATE candidates SET tie_votes = COALESCE(tie_votes, 0) + 1 WHERE id = %s", (target_id,))
+                conn.commit()
+                success_msg = "Candidate tie-breaker vote successfully registered!"
             
         elif action == 'change_password':
             curr_p = request.form.get('current_password', '')
@@ -275,7 +278,7 @@ def admin_portal():
         elif action == 'reset_election':
             confirm_pwd = request.form.get('admin_password')
             if confirm_pwd == state['admin_password']:
-                cur.execute("UPDATE candidates SET votes = 0")
+                cur.execute("UPDATE candidates SET votes = 0, tie_votes = 0, has_tie_voted = FALSE")
                 cur.execute("UPDATE voters SET has_voted = FALSE, candidate_chosen = NULL, voted_at = NULL")
                 cur.execute("UPDATE election_config SET status = 'NOT_STARTED', end_time = NULL WHERE id = 1")
                 conn.commit()
@@ -299,14 +302,6 @@ def admin_portal():
             voter_id = request.form.get('voter_id')
             cur.execute("DELETE FROM voters WHERE id = %s", (voter_id,))
             conn.commit()
-            
-        elif action == 'add_candidate':
-            name = request.form.get('name', '').strip()
-            party = request.form.get('party', '').strip()
-            if name and party:
-                logo_path = save_uploaded_logo(request.files.get('logo_file'))
-                cur.execute("INSERT INTO candidates (name, party_name, logo_path, votes, approved) VALUES (%s, %s, %s, 0, TRUE)", (name, party, logo_path))
-                conn.commit()
                 
         conn.close()
         state = get_election_state()
@@ -321,7 +316,8 @@ def admin_portal():
     pending_count = total_reg - voted_count
     turnout = round((voted_count / total_reg * 100), 1) if total_reg > 0 else 0.0
     
-    cur.execute("SELECT id, name, party_name, logo_path, COALESCE(votes, 0) AS votes FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
+    # Approved Candidates
+    cur.execute("SELECT id, name, party_name, logo_path, COALESCE(votes, 0) AS votes, COALESCE(tie_votes, 0) AS tie_votes, has_tie_voted FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
     approved_cands = cur.fetchall()
     
     cur.execute("SELECT id, name, party_name, logo_path FROM candidates WHERE approved = FALSE ORDER BY id DESC")
@@ -334,16 +330,22 @@ def admin_portal():
     actual_candidates = [c for c in approved_cands if c['name'].strip().upper() != 'NOTA']
     tie = False
     tied_candidates = []
+    pending_tie_voters = []
+    
     if state['status'] == 'CLOSED' and actual_candidates:
         max_votes = max(c['votes'] for c in actual_candidates)
         if max_votes > 0:
             tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
             if len(tied_candidates) > 1:
-                tie = True
+                # Find which candidates haven't voted yet in the tie-breaker
+                pending_tie_voters = [c for c in actual_candidates if not c['has_tie_voted']]
+                # A tie-breaker is active if at least one candidate hasn't voted yet
+                if len(pending_tie_voters) > 0:
+                    tie = True
                 
     conn.close()
 
-    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters, tie=tie, tied_candidates=tied_candidates)
+    return render_template('admin.html', logged_in=True, auth_pass=pwd, error=error, success_msg=success_msg, state=state, total_reg=total_reg, voted_count=voted_count, pending_count=pending_count, turnout=turnout, approved_candidates=approved_cands, pending_candidates=pending_cands, voters=voters, tie=tie, tied_candidates=tied_candidates, pending_tie_voters=pending_tie_voters)
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -474,28 +476,42 @@ def results():
         
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("SELECT name, party_name, logo_path, COALESCE(votes, 0) AS votes FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
+    cur.execute("SELECT name, party_name, logo_path, COALESCE(votes, 0) AS votes, COALESCE(tie_votes, 0) AS tie_votes, has_tie_voted FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
     cands = cur.fetchall()
     
     total_votes = sum(c['votes'] for c in cands) if cands else 0
-    
     actual_candidates = [c for c in cands if c['name'].strip().upper() != 'NOTA']
     
     winner = None
     tie = False
     tied_candidates = []
+    pending_count = 0
     
     if actual_candidates:
         max_votes = max(c['votes'] for c in actual_candidates)
         if max_votes > 0:
             tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
             if len(tied_candidates) > 1:
-                tie = True
-            else:
-                winner = tied_candidates[0]
-                
+                # Check if tie-breaker voting is still active (some candidates haven't voted yet)
+                pending_voters = [c for c in actual_candidates if not c['has_tie_voted']]
+                pending_count = len(pending_voters)
+                if pending_count > 0:
+                    tie = True
+                else:
+                    # Tie-breaker complete! Determine winner by highest votes + tie_votes
+                    actual_candidates_sorted = sorted(actual_candidates, key=lambda x: (x['votes'] + x['tie_votes']), reverse=True)
+                    # Check if there is still a tie after adding tie-breaker votes
+                    top_score = actual_candidates_sorted[0]['votes'] + actual_candidates_sorted[0]['tie_votes']
+                    top_scorers = [c for c in actual_candidates_sorted if (c['votes'] + c['tie_votes']) == top_score]
+                    if len(top_scorers) > 1:
+                        # Still a tie!
+                        tie = True
+                        tied_candidates = top_scorers
+                    else:
+                        winner = actual_candidates_sorted[0]
+                        
     conn.close()
-    return render_template('results.py', state=state, results=cands, winner=winner, tie=tie, tied_candidates=tied_candidates, total_votes=total_votes)
+    return render_template('results.py', state=state, results=cands, winner=winner, tie=tie, tied_candidates=tied_candidates, pending_count=pending_count, total_votes=total_votes)
 
 @app.route('/export_results')
 def export_results():
@@ -523,7 +539,7 @@ def declare_winner():
     state = get_election_state()
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("SELECT name, party_name, logo_path, COALESCE(votes, 0) AS votes FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
+    cur.execute("SELECT name, party_name, logo_path, COALESCE(votes, 0) AS votes, COALESCE(tie_votes, 0) AS tie_votes, has_tie_voted FROM candidates WHERE approved = TRUE ORDER BY votes DESC")
     cands = cur.fetchall()
     conn.close()
     
@@ -537,9 +553,18 @@ def declare_winner():
         if max_votes > 0:
             tied_candidates = [c for c in actual_candidates if c['votes'] == max_votes]
             if len(tied_candidates) > 1:
-                tie = True
-            else:
-                winner = tied_candidates[0]
+                pending_voters = [c for c in actual_candidates if not c['has_tie_voted']]
+                if len(pending_voters) > 0:
+                    tie = True
+                else:
+                    actual_candidates_sorted = sorted(actual_candidates, key=lambda x: (x['votes'] + x['tie_votes']), reverse=True)
+                    top_score = actual_candidates_sorted[0]['votes'] + actual_candidates_sorted[0]['tie_votes']
+                    top_scorers = [c for c in actual_candidates_sorted if (c['votes'] + c['tie_votes']) == top_score]
+                    if len(top_scorers) > 1:
+                        tie = True
+                        tied_candidates = top_scorers
+                    else:
+                        winner = actual_candidates_sorted[0]
 
     today = datetime.now().strftime("%B %d, %Y")
     if tie:
@@ -547,7 +572,7 @@ def declare_winner():
     if not winner:
         return render_template('certificate.html', no_winner=True, date=today)
         
-    return render_template('certificate.html', no_winner=False, name=winner['name'], party=winner['party_name'], logo_path=winner['logo_path'], votes=winner['votes'], date=today)
+    return render_template('certificate.html', no_winner=False, name=winner['name'], party=winner['party_name'], logo_path=winner['logo_path'], votes=(winner['votes'] + winner['tie_votes']), date=today)
 
 if __name__ == '__main__':
     app.run(debug=True)

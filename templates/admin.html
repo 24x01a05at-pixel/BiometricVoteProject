@@ -215,14 +215,18 @@
         {% endif %}
 
         <div class="row g-4">
-            <!-- Left Side: Add Candidate OR Candidate Tie-Breaker Voting -->
+            <!-- Left Side: Candidate Tie-Breaker Voting Block ONLY -->
             <div class="col-lg-6">
                 {% if tie %}
-                <!-- Candidate Tie-Breaker Voting block inside Admin -->
+                <!-- Active Candidate Tie-Breaker Voting -->
                 <div class="card card-custom p-4 bg-white mb-4 border border-warning border-3">
                     <h4 class="fw-bold mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Candidate Tie-Breaker Voting</h4>
                     <p class="text-muted small">Election is TIED. Admin will register votes from approved candidates to resolve the tie between top candidates who got the same highest votes.</p>
                     
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i> Pending voting candidates: <strong>{{ pending_tie_voters|length }}</strong> remaining.
+                    </div>
+
                     <form action="/admin" method="POST" class="row g-3">
                         <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
                         <input type="hidden" name="admin_action" value="candidate_tie_vote">
@@ -231,10 +235,8 @@
                             <label class="form-label small fw-bold">Voting Candidate (Who is voting):</label>
                             <select name="voting_candidate_id" class="form-select" required>
                                 <option value="" disabled selected>Select Voting Candidate</option>
-                                {% for c in approved_candidates %}
-                                    {% if c.name.upper() != 'NOTA' %}
-                                        <option value="{{ c.id }}">{{ c.name }} ({{ c.party_name }})</option>
-                                    {% endif %}
+                                {% for c in pending_tie_voters %}
+                                    <option value="{{ c.id }}">{{ c.name }} ({{ c.party_name }})</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -257,25 +259,10 @@
                     </form>
                 </div>
                 {% else %}
-                <!-- Regular Add Approved Candidate -->
-                <div class="card card-custom p-4 bg-white mb-4">
-                    <h4 class="fw-bold mb-3"><i class="bi bi-person-plus-fill text-primary me-2"></i>Directly Add Approved Candidate</h4>
-                    <form action="/admin" method="POST" enctype="multipart/form-data" class="row g-2">
-                        <input type="hidden" name="auth_pass" value="{{ auth_pass }}">
-                        <input type="hidden" name="admin_action" value="add_candidate">
-                        <div class="col-md-6">
-                            <input type="text" name="name" class="form-control mb-2" placeholder="Candidate Full Name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="party" class="form-control mb-2" placeholder="Party Name" required>
-                        </div>
-                        <div class="col-md-8">
-                            <input type="file" name="logo_file" accept="image/*" class="form-control form-control-sm" title="Upload Party Logo / Candidate Photo">
-                        </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary w-100 fw-bold">Add Candidate</button>
-                        </div>
-                    </form>
+                <!-- No Active Tie-Breaker -->
+                <div class="card card-custom p-4 bg-white mb-4 border border-secondary">
+                    <h4 class="fw-bold mb-2 text-secondary"><i class="bi bi-info-circle me-2"></i>Candidate Tie-Breaker Voting</h4>
+                    <p class="text-muted small mb-0">No active tie-breaker election. Tie-breaker voting activates automatically if a primary election ends in a tie.</p>
                 </div>
                 {% endif %}
 
@@ -289,6 +276,7 @@
                                     <th>Candidate Name</th>
                                     <th>Party</th>
                                     <th>Votes</th>
+                                    <th>Tie Votes</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -305,6 +293,7 @@
                                     <td class="fw-semibold">{{ c.name }}</td>
                                     <td><span class="badge bg-secondary">{{ c.party_name }}</span></td>
                                     <td class="fw-bold text-primary">{{ c.votes }}</td>
+                                    <td class="fw-bold text-warning">+{{ c.tie_votes }}</td>
                                     <td>
                                         {% if c.name.upper() == 'NOTA' %}
                                             <span class="badge bg-secondary px-2 py-1"><i class="bi bi-shield-lock me-1"></i>Permanent</span>
@@ -319,7 +308,7 @@
                                     </td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="5" class="text-center text-muted py-3">No candidates approved for ballot yet.</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-3">No candidates approved for ballot yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
