@@ -235,16 +235,16 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
+    <script src="db.js"></script>
     <script>
-        let initialConfig = JSON.parse(localStorage.getItem('election_config')) || {};
-        if (!initialConfig.admin_password) {
-            initialConfig.admin_password = 'admin123';
-            initialConfig.status = initialConfig.status || 'NOT_STARTED';
-            initialConfig.end_time = initialConfig.end_time || null;
-            localStorage.setItem('election_config', JSON.stringify(initialConfig));
-        }
-        if (!localStorage.getItem('candidates')) {
-            localStorage.setItem('candidates', JSON.stringify([
+        async function init() {
+            showSpinner("Loading cloud database...");
+            const config = await getDB('election_config', {
+                status: 'NOT_STARTED',
+                end_time: null,
+                admin_password: 'admin123'
+            });
+            const candidates = await getDB('candidates', [
                 {
                     id: 9999,
                     name: 'NOTA',
@@ -255,26 +255,28 @@
                     approved: true,
                     has_tie_voted: false
                 }
-            ]));
+            ]);
+            const voters = await getDB('voters', []);
+            hideSpinner();
+
+            // Check session login state
+            if (sessionStorage.getItem('admin_logged_in') === 'true') {
+                showDashboard();
+            }
         }
-        if (!localStorage.getItem('voters')) {
-            localStorage.setItem('voters', JSON.stringify([]));
-        }
-        const config = JSON.parse(localStorage.getItem('election_config'));
-        
-        // Check session login state
-        if (sessionStorage.getItem('admin_logged_in') === 'true') {
-            showDashboard();
-        }
+        init();
 
         // Login Handler
         const loginForm = document.getElementById('login-form');
         const loginError = document.getElementById('login-error');
 
-        loginForm.addEventListener('submit', function(e) {
+        loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             const password = document.getElementById('login_password').value;
-            const currentConfig = JSON.parse(localStorage.getItem('election_config')) || {};
+            showSpinner("Verifying administrator credentials...");
+            const currentConfig = await getDB('election_config', { admin_password: 'admin123' });
+            hideSpinner();
+
             const adminPwd = currentConfig.admin_password || 'admin123';
             
             if (password === adminPwd) {
@@ -291,18 +293,18 @@
             window.location.reload();
         }
 
-        function showDashboard() {
+        async function showDashboard() {
             document.getElementById('login-section').classList.add('d-none');
             document.getElementById('dashboard-section').classList.remove('d-none');
             document.getElementById('btn-logout').classList.remove('d-none');
             document.getElementById('btn-modal-pwd').classList.remove('d-none');
-            renderDashboard();
+            await renderDashboard();
         }
 
-        function renderDashboard() {
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
-            const voters = JSON.parse(localStorage.getItem('voters')) || [];
-            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+        async function renderDashboard() {
+            const currentConfig = await getDB('election_config', { status: 'NOT_STARTED' });
+            const voters = await getDB('voters', []);
+            const candidates = await getDB('candidates', []);
 
             // Stats
             const totalReg = voters.length;
@@ -341,14 +343,16 @@
                 `;
 
                 // Handle extend form submit
-                document.getElementById('extend-form').addEventListener('submit', function(e) {
+                document.getElementById('extend-form').addEventListener('submit', async function(e) {
                     e.preventDefault();
+                    showSpinner("Extending voting time in cloud...");
                     const extendMins = parseInt(document.getElementById('extend_mins').value);
                     const currentEnd = currentConfig.end_time ? new Date(currentConfig.end_time) : new Date();
                     const newEnd = new Date(currentEnd.getTime() + extendMins * 60000);
                     currentConfig.end_time = newEnd.toISOString();
-                    localStorage.setItem('election_config', JSON.stringify(currentConfig));
-                    renderDashboard();
+                    await setDB('election_config', currentConfig);
+                    hideSpinner();
+                    await renderDashboard();
                 });
 
                 startTimerCountdown(currentConfig.end_time);
@@ -478,51 +482,61 @@
             adminInterval = setInterval(tick, 1000);
         }
 
-        function handleStartForm(e) {
+        async function handleStartForm(e) {
             e.preventDefault();
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
+            showSpinner("Starting election in cloud...");
+            const currentConfig = await getDB('election_config', { status: 'NOT_STARTED' });
             const duration = parseInt(document.getElementById('duration').value);
             const endTime = new Date(new Date().getTime() + duration * 60000);
             
             currentConfig.status = 'ACTIVE';
             currentConfig.end_time = endTime.toISOString();
-            localStorage.setItem('election_config', JSON.stringify(currentConfig));
-            renderDashboard();
+            await setDB('election_config', currentConfig);
+            hideSpinner();
+            await renderDashboard();
         }
 
-        function stopElection() {
+        async function stopElection() {
             if (!confirm("Are you sure you want to end the election and close voting now?")) return;
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
+            showSpinner("Ending election in cloud...");
+            const currentConfig = await getDB('election_config', { status: 'ACTIVE' });
             currentConfig.status = 'CLOSED';
             currentConfig.end_time = null;
-            localStorage.setItem('election_config', JSON.stringify(currentConfig));
-            renderDashboard();
+            await setDB('election_config', currentConfig);
+            hideSpinner();
+            await renderDashboard();
         }
 
-        function approveCandidate(id) {
-            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+        async function approveCandidate(id) {
+            showSpinner("Approving candidate...");
+            const candidates = await getDB('candidates', []);
             const index = candidates.findIndex(c => c.id == id);
             if (index !== -1) {
                 candidates[index].approved = true;
             }
-            localStorage.setItem('candidates', JSON.stringify(candidates));
-            renderDashboard();
+            await setDB('candidates', candidates);
+            hideSpinner();
+            await renderDashboard();
         }
 
-        function deleteCandidate(id) {
+        async function deleteCandidate(id) {
             if (!confirm("Remove this candidate?")) return;
-            let candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+            showSpinner("Deleting candidate...");
+            let candidates = await getDB('candidates', []);
             candidates = candidates.filter(c => c.id != id);
-            localStorage.setItem('candidates', JSON.stringify(candidates));
-            renderDashboard();
+            await setDB('candidates', candidates);
+            hideSpinner();
+            await renderDashboard();
         }
 
-        function deleteVoter(id) {
+        async function deleteVoter(id) {
             if (!confirm("Remove this voter record?")) return;
-            let voters = JSON.parse(localStorage.getItem('voters')) || [];
+            showSpinner("Deleting voter...");
+            let voters = await getDB('voters', []);
             voters = voters.filter(v => v.id != id);
-            localStorage.setItem('voters', JSON.stringify(voters));
-            renderDashboard();
+            await setDB('voters', voters);
+            hideSpinner();
+            await renderDashboard();
         }
 
         // Render Candidate Tie-Breaker logic in dashboard
@@ -576,12 +590,13 @@
                     </div>
                 `;
 
-                document.getElementById('tie-vote-form').addEventListener('submit', function(e) {
+                document.getElementById('tie-vote-form').addEventListener('submit', async function(e) {
                     e.preventDefault();
                     const voterVal = document.getElementById('tie_voter').value;
                     const targetVal = document.getElementById('tie_target').value;
 
-                    const candidates = JSON.parse(localStorage.getItem('candidates'));
+                    showSpinner("Registering tie vote...");
+                    const candidates = await getDB('candidates', []);
                     
                     const vIdx = candidates.findIndex(c => c.id == voterVal);
                     if (vIdx !== -1) candidates[vIdx].has_tie_voted = true;
@@ -589,9 +604,10 @@
                     const tIdx = candidates.findIndex(c => c.id == targetVal);
                     if (tIdx !== -1) candidates[tIdx].tie_votes = (candidates[tIdx].tie_votes || 0) + 1;
 
-                    localStorage.setItem('candidates', JSON.stringify(candidates));
+                    await setDB('candidates', candidates);
+                    hideSpinner();
                     alert("Tie-breaker vote successfully registered!");
-                    renderDashboard();
+                    await renderDashboard();
                 });
             } else if (doubleTied.length > 1) {
                 // Double Tie Detected!
@@ -608,79 +624,93 @@
             }
         }
 
-        window.reconductTie = function() {
+        window.reconductTie = async function() {
             if (!confirm("Reset all tie-breaker votes and re-conduct candidate voting?")) return;
-            const candidates = JSON.parse(localStorage.getItem('candidates'));
+            showSpinner("Resetting tie-breaker states...");
+            const candidates = await getDB('candidates', []);
             candidates.forEach(c => {
                 c.tie_votes = 0;
                 c.has_tie_voted = false;
             });
-            localStorage.setItem('candidates', JSON.stringify(candidates));
+            await setDB('candidates', candidates);
+            hideSpinner();
             alert("Tie-breaker reset. Candidates can now vote again.");
-            renderDashboard();
+            await renderDashboard();
         }
 
         // Restart Election
-        document.getElementById('reset-form').addEventListener('submit', function(e) {
+        document.getElementById('reset-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const resetPwd = document.getElementById('reset_pwd').value;
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
+            showSpinner("Checking admin configuration...");
+            const currentConfig = await getDB('election_config', { admin_password: 'admin123' });
 
             if (resetPwd !== currentConfig.admin_password) {
+                hideSpinner();
                 alert("Incorrect Reset Confirmation Password!");
                 return;
             }
 
-            if (!confirm("DANGER: This will wipe all cast votes and reset election to NOT STARTED. Continue?")) return;
+            if (!confirm("DANGER: This will wipe all cast votes and reset election to NOT STARTED. Continue?")) {
+                hideSpinner();
+                return;
+            }
 
+            showSpinner("Wiping vote logs and resetting databases...");
             // Clear votes
-            const candidates = JSON.parse(localStorage.getItem('candidates'));
+            const candidates = await getDB('candidates', []);
             candidates.forEach(c => {
                 c.votes = 0;
                 c.tie_votes = 0;
                 c.has_tie_voted = false;
             });
-            localStorage.setItem('candidates', JSON.stringify(candidates));
 
             // Clear voters
-            const voters = JSON.parse(localStorage.getItem('voters'));
+            const voters = await getDB('voters', []);
             voters.forEach(v => {
                 v.has_voted = false;
                 v.candidate_chosen = null;
                 v.voted_at = null;
             });
-            localStorage.setItem('voters', JSON.stringify(voters));
 
             // Reset config
             currentConfig.status = 'NOT_STARTED';
             currentConfig.end_time = null;
-            localStorage.setItem('election_config', JSON.stringify(currentConfig));
+
+            await setDB('candidates', candidates);
+            await setDB('voters', voters);
+            await setDB('election_config', currentConfig);
+            hideSpinner();
 
             document.getElementById('reset_pwd').value = '';
             alert("Election successfully reset to NOT STARTED.");
-            renderDashboard();
+            await renderDashboard();
         });
 
         // Change Password Modal form
-        document.getElementById('change-pwd-form').addEventListener('submit', function(e) {
+        document.getElementById('change-pwd-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const currVal = document.getElementById('curr_pwd').value;
             const newVal = document.getElementById('new_pwd').value;
             const confVal = document.getElementById('conf_pwd').value;
 
-            const currentConfig = JSON.parse(localStorage.getItem('election_config'));
+            showSpinner("Reading credentials...");
+            const currentConfig = await getDB('election_config', { admin_password: 'admin123' });
 
             if (currVal !== currentConfig.admin_password) {
+                hideSpinner();
                 alert("Password Change Failed: Current password is incorrect.");
                 return;
             }
             if (newVal !== confVal) {
+                hideSpinner();
                 alert("Password Change Failed: New passwords do not match.");
                 return;
             }
 
             currentConfig.admin_password = newVal;
-            localStorage.setItem('election_config', JSON.stringify(currentConfig));
+            await setDB('election_config', currentConfig);
+            hideSpinner();
 
             alert("Admin Password changed successfully!");
             bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
@@ -688,8 +718,11 @@
         });
 
         // CSV export
-        function exportCSV() {
-            const approved = JSON.parse(localStorage.getItem('candidates')).filter(c => c.approved);
+        async function exportCSV() {
+            showSpinner("Generating export...");
+            const candidates = await getDB('candidates', []);
+            hideSpinner();
+            const approved = candidates.filter(c => c.approved);
             approved.sort((a, b) => ((b.votes || 0) + (b.tie_votes || 0)) - ((a.votes || 0) + (a.tie_votes || 0)));
 
             let csv = "Candidate Name,Party Name,Votes,Tie-Breaker Votes,Total\n";

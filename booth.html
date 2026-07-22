@@ -109,6 +109,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
+    <script src="db.js"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -118,28 +119,37 @@
         const closedAlert = document.getElementById('closed-alert');
         const activeSection = document.getElementById('booth-active-section');
 
-        // Check election state
-        const config = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
-        if (config.status !== 'ACTIVE') {
-            closedAlert.classList.remove('d-none');
-            activeSection.classList.add('d-none');
-        }
+        let voters = [];
 
-        // Populate voter select dropdown with eligible voters who haven't voted yet
-        const voters = JSON.parse(localStorage.getItem('voters')) || [];
-        const eligibleVoters = voters.filter(v => !v.has_voted);
-        
-        eligibleVoters.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.id;
-            opt.innerText = v.full_name;
-            voterSelect.appendChild(opt);
-        });
+        async function init() {
+            showSpinner("Connecting to cloud database...");
+            const config = await getDB('election_config', { status: 'NOT_STARTED' });
+            voters = await getDB('voters', []);
+            hideSpinner();
 
-        if (eligibleVoters.length === 0 && config.status === 'ACTIVE') {
-            showAlert('warning', "All registered voters have already cast their votes!");
-            btnScan.disabled = true;
+            // Check election state
+            if (config.status !== 'ACTIVE') {
+                closedAlert.classList.remove('d-none');
+                activeSection.classList.add('d-none');
+                return;
+            }
+
+            // Populate voter select dropdown with eligible voters who haven't voted yet
+            const eligibleVoters = voters.filter(v => !v.has_voted);
+            
+            eligibleVoters.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.innerText = v.full_name;
+                voterSelect.appendChild(opt);
+            });
+
+            if (eligibleVoters.length === 0) {
+                showAlert('warning', "All registered voters have already cast their votes!");
+                btnScan.disabled = true;
+            }
         }
+        init();
 
         // Access camera
         navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
@@ -157,7 +167,7 @@
             alertBox.classList.remove('d-none');
         }
 
-        btnScan.addEventListener('click', function() {
+        btnScan.addEventListener('click', async function() {
             const voterId = voterSelect.value;
             if (!voterId) {
                 showAlert('danger', "Please select your registered name to simulate facial recognition scanning.");
@@ -172,9 +182,11 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+            // Re-fetch voters from cloud to check real-time state
+            const freshVoters = await getDB('voters', []);
+            const targetVoter = freshVoters.find(v => v.id == voterId);
+            
             setTimeout(() => {
-                const targetVoter = voters.find(v => v.id == voterId);
-                
                 if (!targetVoter) {
                     showAlert('danger', "Biometric Unrecognized: Face does not match any registered voter.");
                     resetScanButton();

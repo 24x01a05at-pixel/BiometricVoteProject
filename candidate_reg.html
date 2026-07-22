@@ -80,13 +80,28 @@
     </div>
 
     <!-- Client-Side Nomination & Candidate Directory Script -->
+    <script src="db.js"></script>
     <script>
         const form = document.getElementById('nomination-form');
         const alertBox = document.getElementById('alert-box');
         const candList = document.getElementById('candidate-list');
 
-        function renderCandidates() {
-            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+        async function renderCandidates() {
+            showSpinner("Loading candidates...");
+            const candidates = await getDB('candidates', [
+                {
+                    id: 9999,
+                    name: 'NOTA',
+                    party_name: 'None of the Above',
+                    logo_path: 'static/symbols/nota.png',
+                    votes: 0,
+                    tie_votes: 0,
+                    approved: true,
+                    has_tie_voted: false
+                }
+            ]);
+            hideSpinner();
+
             candList.innerHTML = '';
             
             candidates.forEach(c => {
@@ -106,14 +121,14 @@
         }
         renderCandidates();
 
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('cand_name').value.trim();
             const party = document.getElementById('party_name').value.trim();
             const logoInput = document.getElementById('logo_file');
 
-            const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
+            const candidates = await getDB('candidates', []);
 
             // Duplicate Check
             const exists = candidates.some(c => c.name.toLowerCase() === name.toLowerCase());
@@ -128,7 +143,7 @@
             const file = logoInput.files[0];
             const reader = new FileReader();
             
-            reader.onload = function(evt) {
+            reader.onload = async function(evt) {
                 const base64Image = evt.target.result;
                 
                 candidates.push({
@@ -142,7 +157,9 @@
                     has_tie_voted: false
                 });
 
-                localStorage.setItem('candidates', JSON.stringify(candidates));
+                showSpinner("Submitting candidate nomination to cloud ledger...");
+                await setDB('candidates', candidates);
+                hideSpinner();
                 
                 alertBox.className = "alert alert-success mb-4";
                 alertBox.innerText = `Nomination submitted for '${name}' (${party}). Pending Admin Approval!`;

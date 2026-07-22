@@ -98,6 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
+    <script src="db.js"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -122,7 +123,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        regForm.addEventListener('submit', function(e) {
+        regForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('voter_name').value.trim();
@@ -132,47 +133,45 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
 
-            setTimeout(() => {
-                // Draw frame to canvas
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageDataUrl = canvas.toDataURL('image/jpeg');
+            const voters = await getDB('voters', []);
 
-                // Get database
-                const voters = JSON.parse(localStorage.getItem('voters')) || [];
-
-                // 1. Duplicate check by Name
-                const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
-                if (exists) {
-                    showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
-                    resetSubmitButton();
-                    return;
-                }
-
-                // 2. Simulated Face Recognition / Liveness checks
-                // If the user's name is "photo" or has "test", let's simulate a biometric alert for demo testing!
-                if (name.toLowerCase().includes('photo') || name.toLowerCase().includes('screen')) {
-                    showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Please do not use a phone screen or printed photo.");
-                    resetSubmitButton();
-                    return;
-                }
-
-                // Add voter to database
-                voters.push({
-                    id: Date.now(),
-                    full_name: name,
-                    has_voted: false,
-                    capture_path: imageDataUrl,
-                    candidate_chosen: null,
-                    voted_at: null
-                });
-
-                localStorage.setItem('voters', JSON.stringify(voters));
-
-                showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
-                document.getElementById('voter_name').value = '';
+            // 1. Duplicate check by Name
+            const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
                 resetSubmitButton();
-            }, 1500);
+                return;
+            }
+
+            // 2. Simulated Face Recognition / Liveness checks
+            if (name.toLowerCase().includes('photo') || name.toLowerCase().includes('screen')) {
+                showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Please do not use a phone screen or printed photo.");
+                resetSubmitButton();
+                return;
+            }
+
+            // Draw frame to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageDataUrl = canvas.toDataURL('image/jpeg');
+
+            // Add voter to database
+            voters.push({
+                id: Date.now(),
+                full_name: name,
+                has_voted: false,
+                capture_path: imageDataUrl,
+                candidate_chosen: null,
+                voted_at: null
+            });
+
+            showSpinner("Recording registration to secure cloud ledger...");
+            await setDB('voters', voters);
+            hideSpinner();
+
+            showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
+            document.getElementById('voter_name').value = '';
+            resetSubmitButton();
         });
 
         function resetSubmitButton() {

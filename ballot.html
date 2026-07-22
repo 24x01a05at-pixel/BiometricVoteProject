@@ -45,6 +45,7 @@
     </div>
 
     <!-- Client-Side Ballot Voting Script -->
+    <script src="db.js"></script>
     <script>
         const voterId = sessionStorage.getItem('verified_voter_id');
         const voterName = sessionStorage.getItem('verified_voter_name');
@@ -55,39 +56,47 @@
 
         document.getElementById('voter-name-label').innerText = voterName;
 
-        const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
-        const approvedCandidates = candidates.filter(c => c.approved);
-        
-        // Put NOTA at the end
-        approvedCandidates.sort((a, b) => (a.name.toUpperCase() === 'NOTA') - (b.name.toUpperCase() === 'NOTA'));
-
+        let approvedCandidates = [];
         const ballotContainer = document.getElementById('ballot-candidates');
 
-        approvedCandidates.forEach(c => {
-            const isNota = (c.name.toUpperCase() === 'NOTA');
-            const col = document.createElement('div');
-            col.className = 'col-12';
-            col.innerHTML = `
-                <div class="card candidate-card p-3" id="card-${c.id}" onclick="selectCandidate(${c.id})">
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <input type="radio" name="candidate" value="${c.id}" id="radio-${c.id}" class="form-check-input" style="transform: scale(1.5);">
-                        </div>
-                        <div class="col-auto">
-                            <img src="${c.logo_path || 'static/symbols/nota.png'}" class="logo-img" alt="Logo">
-                        </div>
-                        <div class="col">
-                            <h4 class="fw-bold mb-0">${c.name}</h4>
-                            <span class="text-muted small">${c.party_name}</span>
-                        </div>
-                        <div class="col-auto">
-                            ${isNota ? '<span class="badge bg-secondary">NOTA Option</span>' : '<span class="badge bg-primary">Candidate</span>'}
+        async function init() {
+            showSpinner("Loading candidates...");
+            const candidates = await getDB('candidates', []);
+            hideSpinner();
+
+            approvedCandidates = candidates.filter(c => c.approved);
+            
+            // Put NOTA at the end
+            approvedCandidates.sort((a, b) => (a.name.toUpperCase() === 'NOTA') - (b.name.toUpperCase() === 'NOTA'));
+
+            ballotContainer.innerHTML = '';
+            approvedCandidates.forEach(c => {
+                const isNota = (c.name.toUpperCase() === 'NOTA');
+                const col = document.createElement('div');
+                col.className = 'col-12';
+                col.innerHTML = `
+                    <div class="card candidate-card p-3" id="card-${c.id}" onclick="selectCandidate(${c.id})">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <input type="radio" name="candidate" value="${c.id}" id="radio-${c.id}" class="form-check-input" style="transform: scale(1.5);">
+                            </div>
+                            <div class="col-auto">
+                                <img src="${c.logo_path || 'static/symbols/nota.png'}" class="logo-img" alt="Logo">
+                            </div>
+                            <div class="col">
+                                <h4 class="fw-bold mb-0">${c.name}</h4>
+                                <span class="text-muted small">${c.party_name}</span>
+                            </div>
+                            <div class="col-auto">
+                                ${isNota ? '<span class="badge bg-secondary">NOTA Option</span>' : '<span class="badge bg-primary">Candidate</span>'}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-            ballotContainer.appendChild(col);
-        });
+                `;
+                ballotContainer.appendChild(col);
+            });
+        }
+        init();
 
         let selectedId = null;
         window.selectCandidate = function(id) {
@@ -97,7 +106,7 @@
             document.getElementById(`radio-${id}`).checked = true;
         }
 
-        document.getElementById('ballot-form').addEventListener('submit', function(e) {
+        document.getElementById('ballot-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!selectedId) {
                 alert("Please select a candidate to cast your vote!");
@@ -108,16 +117,28 @@
                 return;
             }
 
+            showSpinner("Recording vote to secure cloud ledger...");
+            
+            // Re-fetch fresh state from cloud
+            const allCandidates = await getDB('candidates', []);
+            const allVoters = await getDB('voters', []);
+
+            // Check if voter has already voted (double vote protection in cloud)
+            const voterObj = allVoters.find(v => v.id == voterId);
+            if (voterObj && voterObj.has_voted) {
+                hideSpinner();
+                alert("Access Denied: You have already cast a vote in this election!");
+                window.location.href = 'index.html';
+                return;
+            }
+
             // Update candidate vote count
-            const allCandidates = JSON.parse(localStorage.getItem('candidates'));
             const cIndex = allCandidates.findIndex(c => c.id == selectedId);
             if (cIndex !== -1) {
                 allCandidates[cIndex].votes = (allCandidates[cIndex].votes || 0) + 1;
             }
-            localStorage.setItem('candidates', JSON.stringify(allCandidates));
 
             // Update voter status
-            const allVoters = JSON.parse(localStorage.getItem('voters'));
             const vIndex = allVoters.findIndex(v => v.id == voterId);
             if (vIndex !== -1) {
                 const votedCand = allCandidates.find(c => c.id == selectedId);
@@ -125,7 +146,11 @@
                 allVoters[vIndex].candidate_chosen = votedCand ? votedCand.name : 'Unknown';
                 allVoters[vIndex].voted_at = new Date().toISOString();
             }
-            localStorage.setItem('voters', JSON.stringify(allVoters));
+
+            // Save both updates back to cloud
+            await setDB('candidates', allCandidates);
+            await setDB('voters', allVoters);
+            hideSpinner();
 
             // Clear session & Redirect to success
             sessionStorage.removeItem('verified_voter_id');

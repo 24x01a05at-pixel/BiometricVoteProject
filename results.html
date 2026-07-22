@@ -77,17 +77,27 @@
     </div>
 
     <!-- Client-Side Results Parsing Script -->
+    <script src="db.js"></script>
     <script>
-        const config = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
-        const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
-        const voters = JSON.parse(localStorage.getItem('voters')) || [];
+        let config = {};
+        let candidates = [];
+        let voters = [];
 
-        if (config.status !== 'CLOSED') {
-            document.getElementById('results-locked-section').classList.remove('d-none');
-        } else {
-            document.getElementById('results-released-section').classList.remove('d-none');
-            renderResults();
+        async function init() {
+            showSpinner("Loading certified results...");
+            config = await getDB('election_config', { status: 'NOT_STARTED' });
+            candidates = await getDB('candidates', []);
+            voters = await getDB('voters', []);
+            hideSpinner();
+
+            if (config.status !== 'CLOSED') {
+                document.getElementById('results-locked-section').classList.remove('d-none');
+            } else {
+                document.getElementById('results-released-section').classList.remove('d-none');
+                renderResults();
+            }
         }
+        init();
 
         function renderResults() {
             // Sort approved candidates by votes

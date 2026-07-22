@@ -156,17 +156,16 @@
     </div>
 
     <!-- Init LocalStorage Data Script -->
+    <script src="db.js"></script>
     <script>
-        // Database Defaults
-        if (!localStorage.getItem('election_config')) {
-            localStorage.setItem('election_config', JSON.stringify({
+        async function init() {
+            showSpinner("Loading cloud database...");
+            const config = await getDB('election_config', {
                 status: 'NOT_STARTED',
                 end_time: null,
                 admin_password: 'admin123'
-            }));
-        }
-        if (!localStorage.getItem('candidates')) {
-            localStorage.setItem('candidates', JSON.stringify([
+            });
+            const candidates = await getDB('candidates', [
                 {
                     id: 9999,
                     name: 'NOTA',
@@ -177,67 +176,62 @@
                     approved: true,
                     has_tie_voted: false
                 }
-            ]));
-        }
-        if (!localStorage.getItem('voters')) {
-            localStorage.setItem('voters', JSON.stringify([]));
-        }
+            ]);
+            const voters = await getDB('voters', []);
+            hideSpinner();
 
-        // Load stats
-        const voters = JSON.parse(localStorage.getItem('voters'));
-        const candidates = JSON.parse(localStorage.getItem('candidates'));
-        const config = JSON.parse(localStorage.getItem('election_config'));
+            const totalVoters = voters.length;
+            const votedVoters = voters.filter(v => v.has_voted).length;
+            const pendingVoters = totalVoters - votedVoters;
+            const approvedCands = candidates.filter(c => c.approved).length;
 
-        const totalVoters = voters.length;
-        const votedVoters = voters.filter(v => v.has_voted).length;
-        const pendingVoters = totalVoters - votedVoters;
-        const approvedCands = candidates.filter(c => c.approved).length;
+            document.getElementById('voter-count').innerText = totalVoters;
+            document.getElementById('voted-count').innerText = votedVoters;
+            document.getElementById('pending-count').innerText = pendingVoters;
+            document.getElementById('candidate-count').innerText = approvedCands;
 
-        document.getElementById('voter-count').innerText = totalVoters;
-        document.getElementById('voted-count').innerText = votedVoters;
-        document.getElementById('pending-count').innerText = pendingVoters;
-        document.getElementById('candidate-count').innerText = approvedCands;
-
-        // Display state
-        const stateBadge = document.getElementById('state-badge');
-        
-        // Timer countdown
-        if (config.status === 'ACTIVE' && config.end_time) {
-            const endTime = new Date(config.end_time).getTime();
+            // Display state
+            const stateBadge = document.getElementById('state-badge');
             
-            function tick() {
-                const now = new Date().getTime();
-                const diff = endTime - now;
+            // Timer countdown
+            if (config.status === 'ACTIVE' && config.end_time) {
+                const endTime = new Date(config.end_time).getTime();
                 
-                if (diff <= 0) {
-                    config.status = 'CLOSED';
-                    config.end_time = null;
-                    localStorage.setItem('election_config', JSON.stringify(config));
-                    stateBadge.className = "badge bg-danger badge-status";
-                    stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
-                    document.getElementById('timer-box').classList.add('d-none');
-                    return;
+                function tick() {
+                    const now = new Date().getTime();
+                    const diff = endTime - now;
+                    
+                    if (diff <= 0) {
+                        config.status = 'CLOSED';
+                        config.end_time = null;
+                        setDB('election_config', config);
+                        stateBadge.className = "badge bg-danger badge-status";
+                        stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
+                        document.getElementById('timer-box').classList.add('d-none');
+                        return;
+                    }
+                    
+                    const mins = Math.floor(diff / 60000);
+                    const secs = Math.floor((diff % 60000) / 1000);
+                    
+                    stateBadge.className = "badge bg-success badge-status";
+                    stateBadge.innerHTML = '<i class="bi bi-broadcast me-1"></i> Election ACTIVE - Voting Open';
+                    
+                    const timerBox = document.getElementById('timer-box');
+                    timerBox.classList.remove('d-none');
+                    document.getElementById('timer-countdown').innerText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
                 }
-                
-                const mins = Math.floor(diff / 60000);
-                const secs = Math.floor((diff % 60000) / 1000);
-                
-                stateBadge.className = "badge bg-success badge-status";
-                stateBadge.innerHTML = '<i class="bi bi-broadcast me-1"></i> Election ACTIVE - Voting Open';
-                
-                const timerBox = document.getElementById('timer-box');
-                timerBox.classList.remove('d-none');
-                document.getElementById('timer-countdown').innerText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+                tick();
+                setInterval(tick, 1000);
+            } else if (config.status === 'CLOSED') {
+                stateBadge.className = "badge bg-danger badge-status";
+                stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
+            } else {
+                stateBadge.className = "badge bg-secondary badge-status";
+                stateBadge.innerHTML = '<i class="bi bi-clock me-1"></i> Election Not Started';
             }
-            tick();
-            setInterval(tick, 1000);
-        } else if (config.status === 'CLOSED') {
-            stateBadge.className = "badge bg-danger badge-status";
-            stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
-        } else {
-            stateBadge.className = "badge bg-secondary badge-status";
-            stateBadge.innerHTML = '<i class="bi bi-clock me-1"></i> Election Not Started';
         }
+        init();
     </script>
 <!-- Build Trigger -->
 </body>

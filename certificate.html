@@ -33,25 +33,33 @@
         <!-- Certificate layout loaded dynamically -->
     </div>
 
+    <script src="db.js"></script>
     <script>
-        const config = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
-        const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
-
+        let config = {};
+        let candidates = [];
         const certBox = document.getElementById('cert-box');
         const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        if (config.status !== 'CLOSED') {
-            certBox.innerHTML = `
-                <div class="py-5">
-                    <i class="bi bi-lock-fill text-danger display-1 mb-4"></i>
-                    <h2 class="fw-bold cert-title">Certificate Locked</h2>
-                    <p class="text-muted fs-5 mt-3">The official winner certificate is sealed and locked. It will automatically generate and release once the election has been officially closed.</p>
-                    <a href="results.html" class="btn btn-outline-dark mt-4">Back to Results</a>
-                </div>
-            `;
-        } else {
-            generateCertificate();
+        async function init() {
+            showSpinner("Verifying certificate credentials...");
+            config = await getDB('election_config', { status: 'NOT_STARTED' });
+            candidates = await getDB('candidates', []);
+            hideSpinner();
+
+            if (config.status !== 'CLOSED') {
+                certBox.innerHTML = `
+                    <div class="py-5">
+                        <i class="bi bi-lock-fill text-danger display-1 mb-4"></i>
+                        <h2 class="fw-bold cert-title">Certificate Locked</h2>
+                        <p class="text-muted fs-5 mt-3">The official winner certificate is sealed and locked. It will automatically generate and release once the election has been officially closed.</p>
+                        <a href="results.html" class="btn btn-outline-dark mt-4">Back to Results</a>
+                    </div>
+                `;
+            } else {
+                generateCertificate();
+            }
         }
+        init();
 
         function generateCertificate() {
             const approved = candidates.filter(c => c.approved);
