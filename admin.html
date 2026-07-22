@@ -236,6 +236,30 @@
 
     <!-- Client-Side Admin Dashboard Controller Script -->
     <script>
+        if (!localStorage.getItem('election_config')) {
+            localStorage.setItem('election_config', JSON.stringify({
+                status: 'NOT_STARTED',
+                end_time: null,
+                admin_password: 'admin123'
+            }));
+        }
+        if (!localStorage.getItem('candidates')) {
+            localStorage.setItem('candidates', JSON.stringify([
+                {
+                    id: 9999,
+                    name: 'NOTA',
+                    party_name: 'None of the Above',
+                    logo_path: 'static/symbols/nota.png',
+                    votes: 0,
+                    tie_votes: 0,
+                    approved: true,
+                    has_tie_voted: false
+                }
+            ]));
+        }
+        if (!localStorage.getItem('voters')) {
+            localStorage.setItem('voters', JSON.stringify([]));
+        }
         const config = JSON.parse(localStorage.getItem('election_config'));
         
         // Check session login state
