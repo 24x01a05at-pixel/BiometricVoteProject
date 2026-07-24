@@ -235,7 +235,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=2"></script>
+    <script src="db.js?v=3"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -401,7 +401,7 @@
                 pendingCandidates.forEach(pc => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><img src="${pc.logo_path || 'static/symbols/nota.png'}" class="cand-thumb" alt="Logo"></td>
+                        <td>${getCandidateLogoHtml(pc.logo_path)}</td>
                         <td class="fw-bold">${pc.name}</td>
                         <td><span class="badge bg-secondary">${pc.party_name}</span></td>
                         <td>
@@ -421,7 +421,7 @@
             approvedCandidates.sort((a,b) => b.votes - a.votes).forEach(c => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><img src="${c.logo_path || 'static/symbols/nota.png'}" class="cand-thumb" alt="Logo"></td>
+                    <td>${getCandidateLogoHtml(c.logo_path)}</td>
                     <td class="fw-semibold">${c.name}</td>
                     <td><span class="badge bg-secondary">${c.party_name}</span></td>
                     <td class="fw-bold text-primary">${c.votes || 0}</td>

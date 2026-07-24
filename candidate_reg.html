@@ -80,7 +80,7 @@
     </div>
 
     <!-- Client-Side Nomination & Candidate Directory Script -->
-    <script src="db.js?v=2"></script>
+    <script src="db.js?v=3"></script>
     <script>
         const form = document.getElementById('nomination-form');
         const alertBox = document.getElementById('alert-box');
@@ -108,7 +108,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>
-                        <img src="${c.logo_path || 'static/symbols/nota.png'}" class="cand-thumb" alt="Logo">
+                        ${getCandidateLogoHtml(c.logo_path)}
                     </td>
                     <td class="fw-bold">${c.name}</td>
                     <td><span class="badge bg-secondary">${c.party_name}</span></td>

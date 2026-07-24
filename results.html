@@ -77,7 +77,7 @@
     </div>
 
     <!-- Client-Side Results Parsing Script -->
-    <script src="db.js?v=2"></script>
+    <script src="db.js?v=3"></script>
     <script>
         let config = {};
         let candidates = [];
@@ -154,7 +154,7 @@
             if (tie) {
                 let logoImgs = '';
                 tiedCandidates.forEach(tc => {
-                    logoImgs += `<img src="${tc.logo_path || 'static/symbols/nota.png'}" class="tie-logo-box" alt="Logo" title="${tc.name}">`;
+                    logoImgs += getCandidateLogoHtml(tc.logo_path, "tie-logo-box");
                 });
                 
                 cardBox.innerHTML = `
@@ -175,7 +175,7 @@
             } else if (winner && ((winner.votes || 0) + (winner.tie_votes || 0)) > 0) {
                 cardBox.innerHTML = `
                     <div class="card winner-card p-4 p-md-5 text-center">
-                        <img src="${winner.logo_path || 'static/symbols/nota.png'}" class="winner-logo-box" alt="Winner Logo">
+                        ${getCandidateLogoHtml(winner.logo_path, "winner-logo-box")}
                         <h5 class="text-uppercase text-warning fw-bold letter-spacing-2">Declared Winner</h5>
                         <h1 class="display-4 fw-extrabold mb-2">${winner.name}</h1>
                         <p class="fs-4 text-light opacity-75 mb-3">${winner.party_name}</p>

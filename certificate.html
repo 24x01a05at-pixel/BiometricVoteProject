@@ -33,7 +33,7 @@
         <!-- Certificate layout loaded dynamically -->
     </div>
 
-    <script src="db.js?v=2"></script>
+    <script src="db.js?v=3"></script>
     <script>
         let config = {};
         let candidates = [];
@@ -106,7 +106,7 @@
             if (tie) {
                 let logoImgs = '';
                 tiedCandidates.forEach(tc => {
-                    logoImgs += `<img src="${tc.logo_path || 'static/symbols/nota.png'}" class="tie-logo" alt="Logo">`;
+                    logoImgs += getCandidateLogoHtml(tc.logo_path, "tie-logo");
                 });
                 
                 certBox.innerHTML = `
@@ -150,7 +150,7 @@
                     <p class="fs-5">This document officially certifies the election of:</p>
                     
                     <div class="my-4">
-                        <img src="${winner.logo_path || 'static/symbols/nota.png'}" class="cand-logo mb-3" alt="Winner Logo">
+                        ${getCandidateLogoHtml(winner.logo_path, "cand-logo")}
                         <br>
                         <h2 class="winner-name fs-1">${winner.name}</h2>
                         <p class="text-muted fs-5 mt-2">Representing the <strong>${winner.party_name}</strong> Party</p>

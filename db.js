@@ -137,9 +137,9 @@ function deserializeVoter(rawStr) {
 function serializeCandidate(cand) {
     const approvedVal = cand.approved ? "1" : "0";
     const tieVotedVal = cand.has_tie_voted ? "1" : "0";
-    let logo = cand.logo_path || "static/symbols/nota.png";
+    let logo = cand.logo_path || "placeholder";
     if (logo.startsWith("data:image")) {
-        logo = "static/symbols/nota.png";
+        logo = "placeholder";
     }
     return `${cand.id}|${cand.name}|${cand.party_name}|${logo}|${cand.votes || 0}|${cand.tie_votes || 0}|${approvedVal}|${tieVotedVal}`;
 }
@@ -173,6 +173,18 @@ function deserializeCandidate(rawStr) {
         approved,
         has_tie_voted
     };
+}
+
+// Global Candidate Logo Renderer Helper
+function getCandidateLogoHtml(logoPath, className = "cand-thumb") {
+    if (logoPath && logoPath !== 'placeholder') {
+        return `<img src="${logoPath}" class="${className}" alt="Logo">`;
+    }
+    return `
+        <div class="${className} d-inline-flex align-items-center justify-content-center bg-light border rounded" style="aspect-ratio: 1/1; vertical-align: middle; min-width: 40px;">
+            <i class="bi bi-award-fill text-muted" style="font-size: 1.25rem;"></i>
+        </div>
+    `;
 }
 
 // Helper to get item from cloud DB

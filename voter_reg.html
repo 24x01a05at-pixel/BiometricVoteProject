@@ -98,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=2"></script>
+    <script src="db.js?v=3"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -183,47 +183,53 @@
         }
 
         function getFaceSignature(canvasEl) {
-            const width = 6;
-            const height = 6;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = width;
-            tempCanvas.height = height;
-            const tempCtx = tempCanvas.getContext('2d');
-            
             const cropW = canvasEl.width * 0.6;
             const cropH = canvasEl.height * 0.6;
             const cropX = (canvasEl.width - cropW) / 2;
             const cropY = (canvasEl.height - cropH) / 2;
             
-            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, width, height);
-            const imgData = tempCtx.getImageData(0, 0, width, height).data;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 120;
+            tempCanvas.height = 120;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, 120, 120);
             
-            const rawGrays = [];
-            let sum = 0;
+            const imgData = tempCtx.getImageData(0, 0, 120, 120).data;
+            const grays = new Float32Array(120 * 120);
+            
+            let min = 255;
+            let max = 0;
             for (let i = 0; i < imgData.length; i += 4) {
                 const gray = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
-                rawGrays.push(gray);
-                sum += gray;
+                grays[i / 4] = gray;
+                if (gray < min) min = gray;
+                if (gray > max) max = gray;
             }
             
-            // Calculate Mean
-            const mean = sum / rawGrays.length;
-            
-            // Calculate Standard Deviation
-            let variance = 0;
-            for (let i = 0; i < rawGrays.length; i++) {
-                const diff = rawGrays[i] - mean;
-                variance += diff * diff;
+            const range = (max - min) || 1.0;
+            const stretched = new Float32Array(120 * 120);
+            for (let i = 0; i < grays.length; i++) {
+                stretched[i] = ((grays[i] - min) / range) * 255.0;
             }
-            const stdDev = Math.sqrt(variance / rawGrays.length) || 1.0;
             
-            // Z-score Normalization and Scale to [0, 255] range for database compatibility
+            const gridW = 6;
+            const gridH = 6;
+            const blockW = 120 / gridW;
+            const blockH = 120 / gridH;
+            
             const signature = [];
-            for (let i = 0; i < rawGrays.length; i++) {
-                const normalized = (rawGrays[i] - mean) / stdDev;
-                let scaled = Math.round((normalized + 3.0) * (255.0 / 6.0));
-                scaled = Math.max(0, Math.min(255, scaled));
-                signature.push(scaled);
+            for (let gy = 0; gy < gridH; gy++) {
+                for (let gx = 0; gx < gridW; gx++) {
+                    let sum = 0;
+                    let count = 0;
+                    for (let py = Math.floor(gy * blockH); py < Math.floor((gy + 1) * blockH); py++) {
+                        for (let px = Math.floor(gx * blockW); px < Math.floor((gx + 1) * blockW); px++) {
+                            sum += stretched[py * 120 + px];
+                            count++;
+                        }
+                    }
+                    signature.push(Math.round(sum / count));
+                }
             }
             return signature;
         }
@@ -284,11 +290,11 @@
                 if (!v.face_signature) return false;
                 const dist = calculateDistance(liveSignature, v.face_signature);
                 console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                return dist < 35.0; 
+                return dist < 50.0; 
             });
 
             if (duplicateVoter) {
-                showAlert('danger', `Biometric Enrollment Refused: This face matches registered voter '${duplicateVoter.full_name}'!`);
+                showAlert('danger', `You are already registered! This face matches enrolled voter '${duplicateVoter.full_name}'.`);
                 resetSubmitButton();
                 return;
             }
