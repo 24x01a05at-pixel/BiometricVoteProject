@@ -198,10 +198,32 @@
             tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, width, height);
             const imgData = tempCtx.getImageData(0, 0, width, height).data;
             
-            const signature = [];
+            const rawGrays = [];
+            let sum = 0;
             for (let i = 0; i < imgData.length; i += 4) {
-                const gray = Math.round(0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2]);
-                signature.push(gray);
+                const gray = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
+                rawGrays.push(gray);
+                sum += gray;
+            }
+            
+            // Calculate Mean
+            const mean = sum / rawGrays.length;
+            
+            // Calculate Standard Deviation
+            let variance = 0;
+            for (let i = 0; i < rawGrays.length; i++) {
+                const diff = rawGrays[i] - mean;
+                variance += diff * diff;
+            }
+            const stdDev = Math.sqrt(variance / rawGrays.length) || 1.0;
+            
+            // Z-score Normalization and Scale to [0, 255] range for database compatibility
+            const signature = [];
+            for (let i = 0; i < rawGrays.length; i++) {
+                const normalized = (rawGrays[i] - mean) / stdDev;
+                let scaled = Math.round((normalized + 3.0) * (255.0 / 6.0));
+                scaled = Math.max(0, Math.min(255, scaled));
+                signature.push(scaled);
             }
             return signature;
         }
@@ -232,6 +254,7 @@
             // Flash screen effect
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
+            alertBox.classList.add('d-none');
 
             // Draw frame to canvas first for liveness verification
             const ctx = canvas.getContext('2d');
@@ -261,7 +284,7 @@
                 if (!v.face_signature) return false;
                 const dist = calculateDistance(liveSignature, v.face_signature);
                 console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                return dist < 12.0; 
+                return dist < 35.0; 
             });
 
             if (duplicateVoter) {
