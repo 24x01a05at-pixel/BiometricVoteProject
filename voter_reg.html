@@ -98,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=8"></script>
+    <script src="db.js?v=9"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -145,14 +145,8 @@
             }
             const clippedRatio = clippedCount / (width * height);
             console.log("Clipped pixel ratio:", clippedRatio);
-            if (clippedRatio > 0.03) {
-                console.log("Rejected: High screen glare/clipping detected");
-                return false;
-            }
             
             // 2. Skin Color Spectral Ratio (R/B Ratio)
-            // Real human skin has a high R/B ratio due to blood flow (usually > 1.3)
-            // Digital screens emitting blue LCD backlight have a low R/B ratio (usually < 1.25)
             let rSum = 0;
             let bSum = 0;
             for (let i = 0; i < data.length; i += 4) {
@@ -161,10 +155,6 @@
             }
             const rbRatio = rSum / (bSum || 1.0);
             console.log("Red/Blue Spectral Ratio:", rbRatio);
-            if (rbRatio < 1.30) {
-                console.log("Rejected: Digital display spectral profile detected");
-                return false;
-            }
             
             const gray = new Float32Array(width * height);
             for (let i = 0; i < data.length; i += 4) {
@@ -202,14 +192,13 @@
                 }
             }
             variance /= count;
-            
             console.log("Laplacian Variance:", variance);
             
-            // 3. Laplacian Variance range (18.0 to 120.0)
-            if (variance < 18.0 || variance > 120.0) {
-                return false;
-            }
-            return true;
+            // Calibrated Safe Thresholds:
+            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0
+            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0);
+            
+            return { success, variance, rbRatio, clippedRatio };
         }
 
         function getFaceSignature(canvasEl) {
@@ -298,8 +287,20 @@
             const imageDataUrl = canvas.toDataURL('image/jpeg');
 
             // 1. Biometric Liveness Verification
-            if (!checkLiveness(canvas)) {
-                showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.");
+            const liveness = checkLiveness(canvas);
+            if (!liveness.success) {
+                let reason = "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.";
+                if (liveness.clippedRatio > 0.08) {
+                    reason = `Biometric Spoof Detected: High screen glare/backlight detected (Glare: ${Math.round(liveness.clippedRatio * 100)}% > 8%).`;
+                } else if (liveness.rbRatio < 1.10) {
+                    reason = `Biometric Spoof Detected: Digital display color spectrum profile detected (Color ratio: ${liveness.rbRatio.toFixed(2)} < 1.10).`;
+                } else if (liveness.variance < 6.0) {
+                    reason = `Biometric Spoof Detected: Face is too blurry or flat (Sharpness: ${liveness.variance.toFixed(1)} < 6.0).`;
+                } else if (liveness.variance > 150.0) {
+                    reason = `Biometric Spoof Detected: Digital moire screen interference pattern detected (Interference: ${liveness.variance.toFixed(1)} > 150.0).`;
+                }
+                
+                showAlert('danger', reason);
                 resetSubmitButton();
                 return;
             }

@@ -109,7 +109,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=8"></script>
+    <script src="db.js?v=9"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -181,19 +181,25 @@
             const imgData = tempCtx.getImageData(0, 0, width, height);
             const data = imgData.data;
             
-            // Screen glare detection: Reject if too many pixels are clipped (direct backlight of LCD screens)
+            // 1. Clipped Highlight Check (LCD Backlight Screen Glare)
             let clippedCount = 0;
             for (let i = 0; i < data.length; i += 4) {
-                if (data[i] > 245 && data[i+1] > 245 && data[i+2] > 245) {
+                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
                     clippedCount++;
                 }
             }
             const clippedRatio = clippedCount / (width * height);
             console.log("Clipped pixel ratio:", clippedRatio);
-            if (clippedRatio > 0.06) {
-                console.log("Rejected: High screen glare/clipping detected");
-                return false;
+            
+            // 2. Skin Color Spectral Ratio (R/B Ratio)
+            let rSum = 0;
+            let bSum = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                rSum += data[i];
+                bSum += data[i+2];
             }
+            const rbRatio = rSum / (bSum || 1.0);
+            console.log("Red/Blue Spectral Ratio:", rbRatio);
             
             const gray = new Float32Array(width * height);
             for (let i = 0; i < data.length; i += 4) {
@@ -231,14 +237,13 @@
                 }
             }
             variance /= count;
-            
             console.log("Laplacian Variance:", variance);
             
-            // Rejects flat/blurry screens and printed papers (< 15.0) and moire pixel patterns (> 180.0)
-            if (variance < 15.0 || variance > 180.0) {
-                return false;
-            }
-            return true;
+            // Calibrated Safe Thresholds:
+            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0
+            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0);
+            
+            return { success, variance, rbRatio, clippedRatio };
         }
 
         function getFaceSignature(canvasEl) {
@@ -325,8 +330,20 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             // 1. Biometric Liveness Verification
-            if (!checkLiveness(canvas)) {
-                showAlert('danger', "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.");
+            const liveness = checkLiveness(canvas);
+            if (!liveness.success) {
+                let reason = "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.";
+                if (liveness.clippedRatio > 0.08) {
+                    reason = `Biometric Spoof Detected: High screen glare/backlight detected (Glare: ${Math.round(liveness.clippedRatio * 100)}% > 8%).`;
+                } else if (liveness.rbRatio < 1.10) {
+                    reason = `Biometric Spoof Detected: Digital display color spectrum profile detected (Color ratio: ${liveness.rbRatio.toFixed(2)} < 1.10).`;
+                } else if (liveness.variance < 6.0) {
+                    reason = `Biometric Spoof Detected: Face is too blurry or flat (Sharpness: ${liveness.variance.toFixed(1)} < 6.0).`;
+                } else if (liveness.variance > 150.0) {
+                    reason = `Biometric Spoof Detected: Digital moire screen interference pattern detected (Interference: ${liveness.variance.toFixed(1)} > 150.0).`;
+                }
+                
+                showAlert('danger', reason);
                 resetScanButton();
                 return;
             }
