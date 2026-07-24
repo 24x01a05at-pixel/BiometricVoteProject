@@ -77,17 +77,6 @@
                             <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
                         </div>
 
-                        <div id="liveness-box" class="alert alert-warning text-center border-2 mb-4">
-                            <h5 class="fw-bold mb-1"><i class="bi bi-eye-fill me-2"></i>Liveness Verification Required</h5>
-                            <p class="mb-2 small">Align your face in the oval and <strong>blink your eyes 3 times</strong> to unlock registration.</p>
-                            <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
-                                <div id="blink-dot-1" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                                <div id="blink-dot-2" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                                <div id="blink-dot-3" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                            </div>
-                            <div class="fw-bold small" id="blink-status">Status: Calibrating (Hold still)...</div>
-                        </div>
-
                         <div class="mb-4 text-center">
                             <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
                             <div class="webcam-container">
@@ -98,7 +87,7 @@
                             <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
                         </div>
 
-                        <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold" disabled>
+                        <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
                             <i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER
                         </button>
                     </form>
@@ -109,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=7"></script>
+    <script src="db.js?v=8"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -117,107 +106,10 @@
         const alertBox = document.getElementById('alert-box');
         const submitBtn = document.getElementById('btn-submit');
 
-        let blinkCount = 0;
-        let eyeState = "OPEN"; // "OPEN" or "CLOSED"
-        let livenessInterval = null;
-        let livenessVerified = false;
-        let baseStd = 0;
-        let calibrationFrames = [];
-
-        function startLivenessLoop() {
-            const hiddenCanvas = document.createElement('canvas');
-            hiddenCanvas.width = 120;
-            hiddenCanvas.height = 120;
-            const hiddenCtx = hiddenCanvas.getContext('2d');
-
-            livenessInterval = setInterval(() => {
-                if (livenessVerified) return;
-                if (!video.videoWidth) return;
-                
-                const cropW = video.videoWidth * 0.6;
-                const cropH = video.videoHeight * 0.6;
-                const cropX = (video.videoWidth - cropW) / 2;
-                const cropY = (video.videoHeight - cropH) / 2;
-                
-                hiddenCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, 120, 120);
-                const imgData = hiddenCtx.getImageData(0, 0, 120, 120).data;
-                
-                const leftEyeGrays = [];
-                const rightEyeGrays = [];
-                
-                for (let y = 45; y < 55; y++) {
-                    for (let x = 35; x < 50; x++) {
-                        const idx = (y * 120 + x) * 4;
-                        leftEyeGrays.push(0.299 * imgData[idx] + 0.587 * imgData[idx+1] + 0.114 * imgData[idx+2]);
-                    }
-                    for (let x = 70; x < 85; x++) {
-                        const idx = (y * 120 + x) * 4;
-                        rightEyeGrays.push(0.299 * imgData[idx] + 0.587 * imgData[idx+1] + 0.114 * imgData[idx+2]);
-                    }
-                }
-                
-                const leftMean = leftEyeGrays.reduce((a, b) => a + b, 0) / leftEyeGrays.length;
-                const leftVar = leftEyeGrays.reduce((a, b) => a + (b - leftMean) ** 2, 0) / leftEyeGrays.length;
-                const leftStd = Math.sqrt(leftVar);
-
-                const rightMean = rightEyeGrays.reduce((a, b) => a + b, 0) / rightEyeGrays.length;
-                const rightVar = rightEyeGrays.reduce((a, b) => a + (b - rightMean) ** 2, 0) / rightEyeGrays.length;
-                const rightStd = Math.sqrt(rightVar);
-                
-                const avgStd = (leftStd + rightStd) / 2;
-                
-                if (calibrationFrames.length < 15) {
-                    calibrationFrames.push(avgStd);
-                    if (calibrationFrames.length === 15) {
-                        baseStd = calibrationFrames.reduce((a, b) => a + b, 0) / 15;
-                        console.log("Calibrated Base Eye Contrast StdDev:", baseStd);
-                        document.getElementById('blink-status').innerText = "Blinks: 0/3 (Blink now)";
-                    }
-                    return;
-                }
-
-                const closedThreshold = Math.max(4.0, baseStd * 0.65);
-                const openThreshold = Math.max(8.0, baseStd * 0.85);
-                
-                if (eyeState === "OPEN") {
-                    if (avgStd < closedThreshold) {
-                        eyeState = "CLOSED";
-                    }
-                } else if (eyeState === "CLOSED") {
-                    if (avgStd > openThreshold) {
-                        eyeState = "OPEN";
-                        blinkCount++;
-                        updateBlinkUI();
-                    }
-                }
-            }, 100);
-        }
-
-        function updateBlinkUI() {
-            const statusEl = document.getElementById('blink-status');
-            statusEl.innerText = `Blinks: ${blinkCount}/3`;
-            
-            if (blinkCount >= 1) document.getElementById('blink-dot-1').className = 'blink-dot bg-success rounded-circle';
-            if (blinkCount >= 2) document.getElementById('blink-dot-2').className = 'blink-dot bg-success rounded-circle';
-            if (blinkCount >= 3) {
-                document.getElementById('blink-dot-3').className = 'blink-dot bg-success rounded-circle';
-                statusEl.innerText = "Liveness Verified!";
-                
-                const livenessBox = document.getElementById('liveness-box');
-                livenessBox.className = "alert alert-success text-center border-2 mb-4";
-                livenessBox.innerHTML = `<h5 class="fw-bold mb-0 text-success"><i class="bi bi-patch-check-fill me-2"></i>Liveness Verified successfully!</h5>`;
-                
-                livenessVerified = true;
-                clearInterval(livenessInterval);
-                submitBtn.disabled = false;
-            }
-        }
-
         // Access webcam
         navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
             .then(stream => {
                 video.srcObject = stream;
-                startLivenessLoop();
             })
             .catch(err => {
                 console.error("Camera access denied:", err);
@@ -244,17 +136,33 @@
             const imgData = tempCtx.getImageData(0, 0, width, height);
             const data = imgData.data;
             
-            // Screen glare detection: Reject if too many pixels are clipped (direct backlight of LCD screens)
+            // 1. Clipped Highlight Check (LCD Backlight Screen Glare)
             let clippedCount = 0;
             for (let i = 0; i < data.length; i += 4) {
-                if (data[i] > 245 && data[i+1] > 245 && data[i+2] > 245) {
+                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
                     clippedCount++;
                 }
             }
             const clippedRatio = clippedCount / (width * height);
             console.log("Clipped pixel ratio:", clippedRatio);
-            if (clippedRatio > 0.06) {
+            if (clippedRatio > 0.03) {
                 console.log("Rejected: High screen glare/clipping detected");
+                return false;
+            }
+            
+            // 2. Skin Color Spectral Ratio (R/B Ratio)
+            // Real human skin has a high R/B ratio due to blood flow (usually > 1.3)
+            // Digital screens emitting blue LCD backlight have a low R/B ratio (usually < 1.25)
+            let rSum = 0;
+            let bSum = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                rSum += data[i];
+                bSum += data[i+2];
+            }
+            const rbRatio = rSum / (bSum || 1.0);
+            console.log("Red/Blue Spectral Ratio:", rbRatio);
+            if (rbRatio < 1.30) {
+                console.log("Rejected: Digital display spectral profile detected");
                 return false;
             }
             
@@ -297,8 +205,8 @@
             
             console.log("Laplacian Variance:", variance);
             
-            // Rejects flat/blurry screens and printed papers (< 15.0) and moire pixel patterns (> 180.0)
-            if (variance < 15.0 || variance > 180.0) {
+            // 3. Laplacian Variance range (18.0 to 120.0)
+            if (variance < 18.0 || variance > 120.0) {
                 return false;
             }
             return true;
@@ -412,7 +320,7 @@
                 if (!v.face_signature) return false;
                 const dist = calculateDistance(liveSignature, v.face_signature);
                 console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                return dist < 65.0; 
+                return dist < 75.0; 
             });
 
             if (duplicateVoter) {
@@ -439,32 +347,11 @@
             showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
             document.getElementById('voter_name').value = '';
             
-            // Reset Liveness State for the next voter
-            blinkCount = 0;
-            eyeState = "OPEN";
-            livenessVerified = false;
-            calibrationFrames = [];
-            baseStd = 0;
-            
-            const livenessBox = document.getElementById('liveness-box');
-            livenessBox.className = "alert alert-warning text-center border-2 mb-4";
-            livenessBox.innerHTML = `
-                <h5 class="fw-bold mb-1"><i class="bi bi-eye-fill me-2"></i>Liveness Verification Required</h5>
-                <p class="mb-2 small">Align your face in the oval and <strong>blink your eyes 3 times</strong> to unlock registration.</p>
-                <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
-                    <div id="blink-dot-1" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                    <div id="blink-dot-2" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                    <div id="blink-dot-3" class="blink-dot bg-secondary rounded-circle" style="width: 15px; height: 15px;"></div>
-                </div>
-                <div class="fw-bold small" id="blink-status">Status: Calibrating (Hold still)...</div>
-            `;
-            
-            startLivenessLoop();
             resetSubmitButton();
         });
 
         function resetSubmitButton() {
-            submitBtn.disabled = !livenessVerified;
+            submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER';
         }
     </script>
