@@ -98,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=9"></script>
+    <script src="db.js?v=10"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -157,9 +157,19 @@
             console.log("Red/Blue Spectral Ratio:", rbRatio);
             
             const gray = new Float32Array(width * height);
+            let graySum = 0;
             for (let i = 0; i < data.length; i += 4) {
-                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                const gVal = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                gray[i / 4] = gVal;
+                graySum += gVal;
             }
+            const grayMean = graySum / gray.length;
+            let grayVar = 0;
+            for (let i = 0; i < gray.length; i++) {
+                grayVar += (gray[i] - grayMean) ** 2;
+            }
+            const faceContrast = Math.sqrt(grayVar / gray.length);
+            console.log("3D Face Contrast (StdDev):", faceContrast);
             
             const laplacian = new Float32Array(width * height);
             let mean = 0;
@@ -195,10 +205,10 @@
             console.log("Laplacian Variance:", variance);
             
             // Calibrated Safe Thresholds:
-            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0
-            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0);
+            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0, 3D Contrast limit: 29.0
+            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0) && (faceContrast >= 29.0);
             
-            return { success, variance, rbRatio, clippedRatio };
+            return { success, variance, rbRatio, clippedRatio, faceContrast };
         }
 
         function getFaceSignature(canvasEl) {
@@ -294,6 +304,8 @@
                     reason = `Biometric Spoof Detected: High screen glare/backlight detected (Glare: ${Math.round(liveness.clippedRatio * 100)}% > 8%).`;
                 } else if (liveness.rbRatio < 1.10) {
                     reason = `Biometric Spoof Detected: Digital display color spectrum profile detected (Color ratio: ${liveness.rbRatio.toFixed(2)} < 1.10).`;
+                } else if (liveness.faceContrast < 29.0) {
+                    reason = `Biometric Spoof Detected: Flat 2D image profile detected (3D Contrast: ${liveness.faceContrast.toFixed(1)} < 29.0).`;
                 } else if (liveness.variance < 6.0) {
                     reason = `Biometric Spoof Detected: Face is too blurry or flat (Sharpness: ${liveness.variance.toFixed(1)} < 6.0).`;
                 } else if (liveness.variance > 150.0) {
