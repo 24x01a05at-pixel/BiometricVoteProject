@@ -98,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=4"></script>
+    <script src="db.js?v=5"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -304,7 +304,7 @@
                 if (!v.face_signature) return false;
                 const dist = calculateDistance(liveSignature, v.face_signature);
                 console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                return dist < 50.0; 
+                return dist < 65.0; 
             });
 
             if (duplicateVoter) {
