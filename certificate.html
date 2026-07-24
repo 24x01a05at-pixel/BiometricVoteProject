@@ -33,7 +33,7 @@
         <!-- Certificate layout loaded dynamically -->
     </div>
 
-    <script src="db.js?v=3"></script>
+    <script src="db.js?v=4"></script>
     <script>
         let config = {};
         let candidates = [];
@@ -77,7 +77,7 @@
                     const primaryTied = actual.filter(c => c.votes === maxVotes);
                     
                     if (primaryTied.length > 1) {
-                        const pendingVoters = actual.filter(c => !c.has_tie_voted);
+                        const pendingVoters = primaryTied.filter(c => !c.has_tie_voted);
                         pendingCount = pendingVoters.length;
                         
                         if (pendingCount > 0) {

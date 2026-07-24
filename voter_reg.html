@@ -98,7 +98,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=3"></script>
+    <script src="db.js?v=4"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -135,6 +135,20 @@
             
             const imgData = tempCtx.getImageData(0, 0, width, height);
             const data = imgData.data;
+            
+            // Screen glare detection: Reject if too many pixels are clipped (direct backlight of LCD screens)
+            let clippedCount = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] > 250 && data[i+1] > 250 && data[i+2] > 250) {
+                    clippedCount++;
+                }
+            }
+            const clippedRatio = clippedCount / (width * height);
+            console.log("Clipped pixel ratio:", clippedRatio);
+            if (clippedRatio > 0.12) {
+                console.log("Rejected: High screen glare/clipping detected");
+                return false;
+            }
             
             const gray = new Float32Array(width * height);
             for (let i = 0; i < data.length; i += 4) {
@@ -175,8 +189,8 @@
             
             console.log("Laplacian Variance:", variance);
             
-            // Rejects flat/blurry printed papers (< 3.0) and high-frequency moire pixel grids (> 350.0)
-            if (variance < 3.0 || variance > 350.0) {
+            // Rejects flat/blurry screens and printed papers (< 8.0) and moire pixel patterns (> 350.0)
+            if (variance < 8.0 || variance > 350.0) {
                 return false;
             }
             return true;

@@ -77,7 +77,7 @@
     </div>
 
     <!-- Client-Side Results Parsing Script -->
-    <script src="db.js?v=3"></script>
+    <script src="db.js?v=4"></script>
     <script>
         let config = {};
         let candidates = [];
@@ -120,7 +120,7 @@
                     
                     if (primaryTied.length > 1) {
                         // Check if tie-breaker is completed
-                        const pendingVoters = actual.filter(c => !c.has_tie_voted);
+                        const pendingVoters = primaryTied.filter(c => !c.has_tie_voted);
                         pendingCount = pendingVoters.length;
                         
                         if (pendingCount > 0) {

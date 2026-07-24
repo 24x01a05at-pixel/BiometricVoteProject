@@ -235,7 +235,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=3"></script>
+    <script src="db.js?v=4"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -557,8 +557,8 @@
             const primaryTied = actual.filter(c => c.votes === maxVotes);
             if (primaryTied.length <= 1) return;
 
-            // Check if tie-breaker has pending voters
-            const pendingVoters = actual.filter(c => !c.has_tie_voted);
+            // Check if tie-breaker has pending voters (only tied candidates vote)
+            const pendingVoters = primaryTied.filter(c => !c.has_tie_voted);
             const doubleTied = actual.filter(c => ((c.votes || 0) + (c.tie_votes || 0)) === Math.max(...actual.map(a => (a.votes || 0) + (a.tie_votes || 0))));
 
             if (pendingVoters.length > 0) {
@@ -566,7 +566,7 @@
                 panelBox.innerHTML = `
                     <div class="card card-custom p-4 bg-white mb-4 border border-warning border-3">
                         <h4 class="fw-bold mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Candidate Tie-Breaker Voting</h4>
-                        <p class="text-muted small">Election is TIED. Admin will register votes from approved candidates to resolve the tie between top candidates who got the same highest votes.</p>
+                        <p class="text-muted small">Election is TIED. Only the tied candidates themselves are eligible to vote to break the tie.</p>
                         <div class="alert alert-info py-2 small mb-3">
                             <i class="bi bi-info-circle-fill me-1"></i> Pending voting candidates: <strong>${pendingVoters.length}</strong> remaining.
                         </div>
