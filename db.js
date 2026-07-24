@@ -79,13 +79,108 @@ function compressImage(base64Str, maxWidth, maxHeight, quality) {
     });
 }
 
+function signatureToBase64(sigArray) {
+    if (!sigArray || sigArray.length === 0) return "";
+    const bytes = new Uint8Array(sigArray);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+function base64ToSignature(base64Str) {
+    if (!base64Str) return [];
+    try {
+        const binary = atob(base64Str);
+        const sigArray = [];
+        for (let i = 0; i < binary.length; i++) {
+            sigArray.push(binary.charCodeAt(i));
+        }
+        return sigArray;
+    } catch(e) {
+        return [];
+    }
+}
+
+function serializeVoter(voter) {
+    const sigBase64 = signatureToBase64(voter.face_signature || []);
+    const votedVal = voter.has_voted ? "1" : "0";
+    return `${voter.id}|${voter.full_name}|${votedVal}|${sigBase64}`;
+}
+
+function deserializeVoter(rawStr) {
+    const parts = rawStr.split('|');
+    const id = parseInt(parts[0]);
+    const full_name = parts[1];
+    const has_voted = parts[2] === "1";
+    const face_signature = base64ToSignature(parts[3] || "");
+    
+    let capture_path = null;
+    try {
+        const localVoters = JSON.parse(localStorage.getItem('voters') || '[]');
+        const match = localVoters.find(v => v.id === id);
+        if (match && match.capture_path) {
+            capture_path = match.capture_path;
+        }
+    } catch(e) {}
+
+    return {
+        id,
+        full_name,
+        has_voted,
+        face_signature,
+        capture_path
+    };
+}
+
+function serializeCandidate(cand) {
+    const approvedVal = cand.approved ? "1" : "0";
+    const tieVotedVal = cand.has_tie_voted ? "1" : "0";
+    let logo = cand.logo_path || "static/symbols/nota.png";
+    if (logo.startsWith("data:image")) {
+        logo = "static/symbols/nota.png";
+    }
+    return `${cand.id}|${cand.name}|${cand.party_name}|${logo}|${cand.votes || 0}|${cand.tie_votes || 0}|${approvedVal}|${tieVotedVal}`;
+}
+
+function deserializeCandidate(rawStr) {
+    const parts = rawStr.split('|');
+    const id = parseInt(parts[0]);
+    const name = parts[1];
+    const party_name = parts[2];
+    let logo_path = parts[3];
+    const votes = parseInt(parts[4] || "0");
+    const tie_votes = parseInt(parts[5] || "0");
+    const approved = parts[6] === "1";
+    const has_tie_voted = parts[7] === "1";
+
+    try {
+        const localCands = JSON.parse(localStorage.getItem('candidates') || '[]');
+        const match = localCands.find(c => c.id == id);
+        if (match && match.logo_path && match.logo_path.startsWith('data:image')) {
+            logo_path = match.logo_path;
+        }
+    } catch(e) {}
+
+    return {
+        id,
+        name,
+        party_name,
+        logo_path,
+        votes,
+        tie_votes,
+        approved,
+        has_tie_voted
+    };
+}
+
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue) {
     try {
         if (key === 'voters') {
             const listStr = await getCloudValue('voters_list');
             if (listStr === null) {
-                // Initialize empty voters list in cloud
                 await setCloudValue('voters_list', '');
                 localStorage.setItem('voters', JSON.stringify([]));
                 return [];
@@ -95,15 +190,36 @@ async function getDB(key, defaultValue) {
             for (const id of ids) {
                 const voterStr = await getCloudValue(`voter_${id}`);
                 if (voterStr) {
-                    voters.push(JSON.parse(voterStr));
+                    voters.push(deserializeVoter(voterStr));
                 }
             }
             localStorage.setItem('voters', JSON.stringify(voters));
             return voters;
+        } else if (key === 'candidates') {
+            const listStr = await getCloudValue('candidates_list');
+            if (listStr === null) {
+                const ids = defaultValue.map(c => c.id);
+                for (const c of defaultValue) {
+                    const serialized = serializeCandidate(c);
+                    await setCloudValue(`candidate_${c.id}`, serialized);
+                }
+                await setCloudValue('candidates_list', ids.join(','));
+                localStorage.setItem('candidates', JSON.stringify(defaultValue));
+                return defaultValue;
+            }
+            const ids = listStr.split(',').filter(Boolean);
+            const candidates = [];
+            for (const id of ids) {
+                const candStr = await getCloudValue(`candidate_${id}`);
+                if (candStr) {
+                    candidates.push(deserializeCandidate(candStr));
+                }
+            }
+            localStorage.setItem('candidates', JSON.stringify(candidates));
+            return candidates;
         } else {
             const valStr = await getCloudValue(key);
             if (valStr === null) {
-                // Initialize default value in cloud
                 await setCloudValue(key, JSON.stringify(defaultValue));
                 localStorage.setItem(key, JSON.stringify(defaultValue));
                 return defaultValue;
@@ -126,13 +242,18 @@ async function setDB(key, value) {
             const ids = [];
             for (const voter of value) {
                 ids.push(voter.id);
-                let cloudVoter = { ...voter };
-                if (cloudVoter.capture_path && cloudVoter.capture_path.length > 2000) {
-                    cloudVoter.capture_path = await compressImage(cloudVoter.capture_path, 40, 40, 0.4);
-                }
-                await setCloudValue(`voter_${voter.id}`, JSON.stringify(cloudVoter));
+                const serialized = serializeVoter(voter);
+                await setCloudValue(`voter_${voter.id}`, serialized);
             }
             await setCloudValue('voters_list', ids.join(','));
+        } else if (key === 'candidates') {
+            const ids = [];
+            for (const cand of value) {
+                ids.push(cand.id);
+                const serialized = serializeCandidate(cand);
+                await setCloudValue(`candidate_${cand.id}`, serialized);
+            }
+            await setCloudValue('candidates_list', ids.join(','));
         } else {
             await setCloudValue(key, JSON.stringify(value));
         }

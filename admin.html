@@ -440,13 +440,17 @@
             votersTbody.innerHTML = '';
             const sortedVoters = [...voters].sort((a, b) => a.full_name.localeCompare(b.full_name));
             sortedVoters.forEach(v => {
+                const photoHtml = v.capture_path 
+                    ? `<img src="${v.capture_path}" class="voter-thumb" alt="Voter Photo">`
+                    : `<div class="voter-thumb-placeholder d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width: 40px; height: 40px; margin: 0 auto;"><i class="bi bi-person-fill text-secondary"></i></div>`;
+                    
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><img src="${v.capture_path}" class="voter-thumb" alt="Voter Photo"></td>
+                    <td>${photoHtml}</td>
                     <td class="fw-semibold">${v.full_name}</td>
                     <td>
                         ${v.has_voted 
-                            ? `<span class="badge bg-success">Voted (${v.candidate_chosen})</span>` 
+                            ? `<span class="badge bg-success">Voted (${v.candidate_chosen || 'Cast'})</span>` 
                             : '<span class="badge bg-warning text-dark">Eligible</span>'}
                     </td>
                     <td>

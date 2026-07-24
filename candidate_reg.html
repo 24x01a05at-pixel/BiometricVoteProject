@@ -139,6 +139,8 @@
                 return;
             }
 
+            const file = logoInput.files[0];
+
             const submitNomination = async (base64Image) => {
                 candidates.push({
                     id: Date.now(),
