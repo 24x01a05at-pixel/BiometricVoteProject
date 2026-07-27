@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=14"></script>
+    <script src="db.js?v=15"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -149,6 +149,56 @@
                 showAlert('danger', "Camera access denied. Please allow camera permissions to capture facial biometrics.");
             });
 
+        function getFaceCenter(canvasEl) {
+            const w = canvasEl.width;
+            const h = canvasEl.height;
+            
+            let bestX = w / 2;
+            let bestY = h / 2;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 40;
+            tempCanvas.height = 30;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasEl, 0, 0, 40, 30);
+            
+            const imgData = tempCtx.getImageData(0, 0, 40, 30);
+            const data = imgData.data;
+            
+            let sumX = 0;
+            let sumY = 0;
+            let totalWeight = 0;
+            
+            for (let y = 1; y < 29; y++) {
+                for (let x = 1; x < 39; x++) {
+                    const idx = (y * 40 + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx+1];
+                    const b = data[idx+2];
+                    
+                    const rbRatio = r / (b || 1.0);
+                    
+                    // Skin color heuristic
+                    if (r > 30 && g > 25 && b > 20 && r > g && rbRatio >= 1.05 && rbRatio <= 2.2) {
+                        const weight = r;
+                        sumX += x * weight;
+                        sumY += y * weight;
+                        totalWeight += weight;
+                    }
+                }
+            }
+            
+            if (totalWeight > 100) {
+                bestX = (sumX / totalWeight) * (w / 40);
+                bestY = (sumY / totalWeight) * (h / 30);
+                console.log(`Dynamic skin-tracking center: X=${bestX.toFixed(1)}, Y=${bestY.toFixed(1)}`);
+            } else {
+                console.log("No skin pixels found, defaulting to center.");
+            }
+            
+            return { x: bestX, y: bestY };
+        }
+
         function checkLiveness(canvasEl) {
             const ctx = canvasEl.getContext('2d');
             const width = 160;
@@ -159,12 +209,18 @@
             tempCanvas.height = height;
             const tempCtx = tempCanvas.getContext('2d');
             
-            // Analyze only the center 60% face region, ignoring flat background walls
-            const cropW = canvasEl.width * 0.6;
-            const cropH = canvasEl.height * 0.6;
-            const cropX = (canvasEl.width - cropW) / 2;
-            const cropY = (canvasEl.height - cropH) / 2;
-            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, width, height);
+            // Dynamically crop a square around the detected face center
+            const center = getFaceCenter(canvasEl);
+            const cropSize = Math.min(canvasEl.width * 0.55, canvasEl.height * 0.55);
+            let cropX = center.x - cropSize / 2;
+            let cropY = center.y - cropSize / 2;
+            
+            if (cropX < 0) cropX = 0;
+            if (cropY < 0) cropY = 0;
+            if (cropX + cropSize > canvasEl.width) cropX = canvasEl.width - cropSize;
+            if (cropY + cropSize > canvasEl.height) cropY = canvasEl.height - cropSize;
+            
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropSize, cropSize, 0, 0, width, height);
             
             const imgData = tempCtx.getImageData(0, 0, width, height);
             const data = imgData.data;
@@ -245,16 +301,22 @@
         }
 
         function getFaceSignature(canvasEl) {
-            const cropW = canvasEl.width * 0.6;
-            const cropH = canvasEl.height * 0.6;
-            const cropX = (canvasEl.width - cropW) / 2;
-            const cropY = (canvasEl.height - cropH) / 2;
+            // Dynamically crop a square around the detected face center
+            const center = getFaceCenter(canvasEl);
+            const cropSize = Math.min(canvasEl.width * 0.55, canvasEl.height * 0.55);
+            let cropX = center.x - cropSize / 2;
+            let cropY = center.y - cropSize / 2;
+            
+            if (cropX < 0) cropX = 0;
+            if (cropY < 0) cropY = 0;
+            if (cropX + cropSize > canvasEl.width) cropX = canvasEl.width - cropSize;
+            if (cropY + cropSize > canvasEl.height) cropY = canvasEl.height - cropSize;
             
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = 120;
             tempCanvas.height = 120;
             const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(canvasEl, cropX, cropY, cropW, cropH, 0, 0, 120, 120);
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropSize, cropSize, 0, 0, 120, 120);
             
             const imgData = tempCtx.getImageData(0, 0, 120, 120).data;
             const grays = new Float32Array(120 * 120);
@@ -449,7 +511,7 @@
                 console.log(`Pose Distances - Left-Straight: ${distLeftStraight.toFixed(1)}, Right-Straight: ${distRightStraight.toFixed(1)}, Left-Right: ${distLeftRight.toFixed(1)}`);
                 
                 // 1. Same face check (ensures they didn't swap people/photos during captures)
-                if (distLeftStraight > 38.0 || distRightStraight > 38.0) {
+                if (distLeftStraight > 48.0 || distRightStraight > 48.0) {
                     showAlert('danger', "Biometric Verification Failed: Please use the same face for all 3 poses. Do not swap photos or people.");
                     resetSubmitButton();
                     return;
