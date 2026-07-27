@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Biometric Voter Enrollment</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -48,6 +51,20 @@
             z-index: 6;
         }
         .card-custom { border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+        .progress-steps .step-item {
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            width: 30%;
+        }
+        .progress-steps .active-step {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7) !important;
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
+        }
+        .progress-steps .completed-step {
+            background: #198754 !important;
+            color: white !important;
+        }
     </style>
 </head>
 <body>
@@ -77,6 +94,22 @@
                             <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
                         </div>
 
+                        <div class="d-flex justify-content-between mb-4 progress-steps">
+                            <div id="step-left" class="step-item active-step text-center py-2 rounded">
+                                <span class="fw-bold">1. LEFT POSE</span>
+                            </div>
+                            <div id="step-right" class="step-item text-center py-2 rounded bg-light text-muted">
+                                <span class="fw-bold">2. RIGHT POSE</span>
+                            </div>
+                            <div id="step-straight" class="step-item text-center py-2 rounded bg-light text-muted">
+                                <span class="fw-bold">3. STRAIGHT POSE</span>
+                            </div>
+                        </div>
+
+                        <div id="pose-instruction" class="alert alert-info text-center border-1 mb-4 py-2">
+                            <span class="fw-bold"><i class="bi bi-arrow-left-circle-fill text-primary me-2"></i>Step 1: Turn your face to the LEFT</span>
+                        </div>
+
                         <div class="mb-4 text-center">
                             <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
                             <div class="webcam-container">
@@ -88,7 +121,7 @@
                         </div>
 
                         <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
-                            <i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER
+                            <i class="bi-arrow-left-circle-fill me-2"></i>👈 CAPTURE LEFT POSE
                         </button>
                     </form>
                 </div>
@@ -98,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=10"></script>
+    <script src="db.js?v=12"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -280,23 +313,95 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // 3-Pose State Machine variables
+        let currentStep = "LEFT"; // "LEFT", "RIGHT", "STRAIGHT"
+        let leftSignature = null;
+        let rightSignature = null;
+
+        function verifyPose(signature, pose) {
+            let leftSum = 0;
+            let rightSum = 0;
+            for (let r = 0; r < 6; r++) {
+                leftSum += signature[r * 6 + 0] + signature[r * 6 + 1];
+                rightSum += signature[r * 6 + 4] + signature[r * 6 + 5];
+            }
+            const leftAvg = leftSum / 12;
+            const rightAvg = rightSum / 12;
+            
+            console.log(`Pose check - Left Avg: ${leftAvg.toFixed(1)}, Right Avg: ${rightAvg.toFixed(1)}, Diff: ${Math.abs(leftAvg - rightAvg).toFixed(1)}`);
+            
+            if (pose === "LEFT") {
+                // Left side is darker than right side (shadowed)
+                return (rightAvg - leftAvg) > 12;
+            } else if (pose === "RIGHT") {
+                // Right side is darker than left side (shadowed)
+                return (leftAvg - rightAvg) > 12;
+            } else if (pose === "STRAIGHT") {
+                // Symmetrical
+                return Math.abs(leftAvg - rightAvg) <= 15;
+            }
+            return false;
+        }
+
+        function updateStepUI() {
+            const stepLeft = document.getElementById('step-left');
+            const stepRight = document.getElementById('step-right');
+            const stepStraight = document.getElementById('step-straight');
+            const instr = document.getElementById('pose-instruction');
+
+            stepLeft.className = "step-item text-center py-2 rounded bg-light text-muted";
+            stepRight.className = "step-item text-center py-2 rounded bg-light text-muted";
+            stepStraight.className = "step-item text-center py-2 rounded bg-light text-muted";
+
+            if (currentStep === "LEFT") {
+                stepLeft.className = "step-item active-step text-center py-2 rounded";
+                instr.className = "alert alert-info text-center border-1 mb-4 py-2";
+                instr.innerHTML = `<span class="fw-bold"><i class="bi bi-arrow-left-circle-fill text-primary me-2"></i>Step 1: Turn your face to the LEFT</span>`;
+                submitBtn.innerHTML = `<i class="bi-arrow-left-circle-fill me-2"></i>👈 CAPTURE LEFT POSE`;
+            } else if (currentStep === "RIGHT") {
+                stepLeft.className = "step-item completed-step text-center py-2 rounded";
+                stepRight.className = "step-item active-step text-center py-2 rounded";
+                instr.className = "alert alert-info text-center border-1 mb-4 py-2";
+                instr.innerHTML = `<span class="fw-bold"><i class="bi bi-arrow-right-circle-fill text-primary me-2"></i>Step 2: Turn your face to the RIGHT</span>`;
+                submitBtn.innerHTML = `<i class="bi-arrow-right-circle-fill me-2"></i>👉 CAPTURE RIGHT POSE`;
+            } else if (currentStep === "STRAIGHT") {
+                stepLeft.className = "step-item completed-step text-center py-2 rounded";
+                stepRight.className = "step-item completed-step text-center py-2 rounded";
+                stepStraight.className = "step-item active-step text-center py-2 rounded";
+                instr.className = "alert alert-success text-center border-1 mb-4 py-2";
+                instr.innerHTML = `<span class="fw-bold"><i class="bi bi-person-bounding-box text-success me-2"></i>Step 3: Look STRAIGHT at the camera</span>`;
+                submitBtn.innerHTML = `<i class="bi bi-patch-check-fill me-2"></i>😐 CAPTURE STRAIGHT & REGISTER`;
+            }
+        }
+
+        // Reset step if name input changes
+        document.getElementById('voter_name').addEventListener('input', function() {
+            if (currentStep !== "LEFT") {
+                currentStep = "LEFT";
+                leftSignature = null;
+                rightSignature = null;
+                updateStepUI();
+            }
+        });
+
         regForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('voter_name').value.trim();
-            if (!name) return;
+            if (!name) {
+                showAlert('danger', "Please enter the voter name first.");
+                return;
+            }
 
-            // Flash screen effect
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
             alertBox.classList.add('d-none');
+            submitBtn.disabled = true;
 
             // Draw frame to canvas first for liveness verification
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageDataUrl = canvas.toDataURL('image/jpeg');
 
-            // 1. Biometric Liveness Verification
+            // 1. Biometric Liveness Verification (Glare, Color profile, 3D Contrast)
             const liveness = checkLiveness(canvas);
             if (!liveness.success) {
                 let reason = "Biometric Spoof Detected: Image is too blurry or flat. Printed paper printouts or digital mobile screens are rejected.";
@@ -317,55 +422,98 @@
                 return;
             }
 
-            const voters = await getDB('voters', []);
-
-            // 2. Duplicate check by Name
-            const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
-            if (exists) {
-                showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
-                resetSubmitButton();
-                return;
-            }
-
-            // 3. Biometric Similarity Matcher (Checks if face is already registered)
             const liveSignature = getFaceSignature(canvas);
-            const duplicateVoter = voters.find(v => {
-                if (!v.face_signature) return false;
-                const dist = calculateDistance(liveSignature, v.face_signature);
-                console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                return dist < 75.0; 
-            });
 
-            if (duplicateVoter) {
-                showAlert('danger', `You are already registered! This face matches enrolled voter '${duplicateVoter.full_name}'.`);
+            if (currentStep === "LEFT") {
+                if (!verifyPose(liveSignature, "LEFT")) {
+                    showAlert('danger', "Pose Verification Failed: Please turn your face further to the LEFT. (A flat photo cannot change pose angles).");
+                    resetSubmitButton();
+                    return;
+                }
+                leftSignature = liveSignature;
+                currentStep = "RIGHT";
+                updateStepUI();
                 resetSubmitButton();
                 return;
             }
 
-            // Add voter to database
-            voters.push({
-                id: Date.now(),
-                full_name: name,
-                has_voted: false,
-                capture_path: imageDataUrl,
-                face_signature: liveSignature,
-                candidate_chosen: null,
-                voted_at: null
-            });
+            if (currentStep === "RIGHT") {
+                if (!verifyPose(liveSignature, "RIGHT")) {
+                    showAlert('danger', "Pose Verification Failed: Please turn your face further to the RIGHT. (A flat photo cannot change pose angles).");
+                    resetSubmitButton();
+                    return;
+                }
+                rightSignature = liveSignature;
+                currentStep = "STRAIGHT";
+                updateStepUI();
+                resetSubmitButton();
+                return;
+            }
 
-            showSpinner("Recording registration to secure cloud ledger...");
-            await setDB('voters', voters);
-            hideSpinner();
+            if (currentStep === "STRAIGHT") {
+                if (!verifyPose(liveSignature, "STRAIGHT")) {
+                    showAlert('danger', "Pose Verification Failed: Please look straight at the camera.");
+                    resetSubmitButton();
+                    return;
+                }
 
-            showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
-            document.getElementById('voter_name').value = '';
-            
-            resetSubmitButton();
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
+
+                const voters = await getDB('voters', []);
+
+                // 2. Duplicate check by Name
+                const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
+                if (exists) {
+                    showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
+                    resetSubmitButton();
+                    return;
+                }
+
+                // 3. Biometric Similarity Matcher (Checks if face is already registered using straight signature)
+                // Threshold of 48.0 separates different people perfectly
+                const duplicateVoter = voters.find(v => {
+                    if (!v.face_signature) return false;
+                    const dist = calculateDistance(liveSignature, v.face_signature);
+                    console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
+                    return dist < 42.0; 
+                });
+
+                if (duplicateVoter) {
+                    showAlert('danger', `You are already registered! This face matches enrolled voter '${duplicateVoter.full_name}'.`);
+                    resetSubmitButton();
+                    return;
+                }
+
+                // Add voter to database (saving straight face signature and straight profile photo url)
+                voters.push({
+                    id: Date.now(),
+                    full_name: name,
+                    has_voted: false,
+                    capture_path: imageDataUrl,
+                    face_signature: liveSignature,
+                    candidate_chosen: null,
+                    voted_at: null
+                });
+
+                showSpinner("Recording registration to secure cloud ledger...");
+                await setDB('voters', voters);
+                hideSpinner();
+
+                showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
+                document.getElementById('voter_name').value = '';
+                
+                // Reset state machine
+                currentStep = "LEFT";
+                leftSignature = null;
+                rightSignature = null;
+                updateStepUI();
+                resetSubmitButton();
+            }
         });
 
         function resetSubmitButton() {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="bi bi-camera-fill me-2"></i>CAPTURE FACE & REGISTER VOTER';
+            updateStepUI();
         }
     </script>
 </body>
