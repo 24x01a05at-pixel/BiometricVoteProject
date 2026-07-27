@@ -112,7 +112,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=18"></script>
+    <script src="db.js?v=19"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -180,12 +180,18 @@
             const imgData = tempCtx.getImageData(0, 0, 40, 30);
             const data = imgData.data;
             
+            // Grayscale array for Laplacian edge detection
+            const gray = new Float32Array(40 * 30);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            }
+            
             let sumX = 0;
             let sumY = 0;
             let totalWeight = 0;
             
-            for (let y = 1; y < 29; y++) {
-                for (let x = 1; x < 39; x++) {
+            for (let y = 2; y < 28; y++) {
+                for (let x = 2; x < 38; x++) {
                     const idx = (y * 40 + x) * 4;
                     const r = data[idx];
                     const g = data[idx+1];
@@ -193,9 +199,18 @@
                     
                     const rbRatio = r / (b || 1.0);
                     
-                    // Skin color heuristic
-                    if (r > 30 && g > 25 && b > 20 && r > g && rbRatio >= 1.05 && rbRatio <= 2.2) {
-                        const weight = r;
+                    // 1. Strict Skin color heuristic
+                    const isSkinColor = (r > 40 && g > 30 && b > 20 && r > g && (r - b) > 18 && rbRatio >= 1.10 && rbRatio <= 2.2);
+                    
+                    if (isSkinColor) {
+                        // 2. Local edge strength (Laplacian-like)
+                        const gIdx = y * 40 + x;
+                        const edgeVal = Math.abs(
+                            gray[gIdx - 40] + gray[gIdx - 1] - 4 * gray[gIdx] + gray[gIdx + 1] + gray[gIdx + 40]
+                        );
+                        
+                        // Weight is a combination of color intensity and local detail density
+                        const weight = r * (1.0 + edgeVal);
                         sumX += x * weight;
                         sumY += y * weight;
                         totalWeight += weight;
@@ -206,9 +221,9 @@
             if (totalWeight > 100) {
                 bestX = (sumX / totalWeight) * (w / 40);
                 bestY = (sumY / totalWeight) * (h / 30);
-                console.log(`Dynamic skin-tracking center: X=${bestX.toFixed(1)}, Y=${bestY.toFixed(1)}`);
+                console.log(`Dynamic skin-edge tracking center: X=${bestX.toFixed(1)}, Y=${bestY.toFixed(1)}`);
             } else {
-                console.log("No skin pixels found, defaulting to center.");
+                console.log("No face detected by skin-edge heuristic, defaulting to center.");
             }
             
             return { x: bestX, y: bestY };
