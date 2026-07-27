@@ -19,34 +19,26 @@ function decodeSafeBase64(str) {
 }
 
 async function getCloudValue(key) {
-    try {
-        const response = await fetch(`${BASE_URL}/GetValue/${APP_KEY}/${key}`);
-        if (!response.ok) return null;
-        const resText = await response.text();
-        if (!resText || resText === "null") return null;
-        const encodedVal = JSON.parse(resText);
-        if (!encodedVal) return null;
-        return decodeSafeBase64(encodedVal);
-    } catch (e) {
-        console.error("Read error:", e);
-        return null;
-    }
+    const response = await fetch(`${BASE_URL}/GetValue/${APP_KEY}/${key}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Cloud error ${response.status}`);
+    const resText = await response.text();
+    if (!resText || resText === "null") return null;
+    const encodedVal = JSON.parse(resText);
+    if (!encodedVal) return null;
+    return decodeSafeBase64(encodedVal);
 }
 
 async function setCloudValue(key, valueStr) {
-    try {
-        const encodedVal = encodeSafeBase64(valueStr);
-        const response = await fetch(`${BASE_URL}/UpdateValue/${APP_KEY}/${key}/${encodedVal}`, {
-            method: 'POST',
-            headers: {
-                'Content-Length': '0'
-            }
-        });
-        if (!response.ok) {
-            throw new Error(`Write failed: ${response.status}`);
+    const encodedVal = encodeSafeBase64(valueStr);
+    const response = await fetch(`${BASE_URL}/UpdateValue/${APP_KEY}/${key}/${encodedVal}`, {
+        method: 'POST',
+        headers: {
+            'Content-Length': '0'
         }
-    } catch (e) {
-        console.error("Write error:", e);
+    });
+    if (!response.ok) {
+        throw new Error(`Write failed: ${response.status}`);
     }
 }
 
@@ -193,7 +185,9 @@ async function getDB(key, defaultValue) {
         if (key === 'voters') {
             const listStr = await getCloudValue('voters_list');
             if (listStr === null) {
-                await setCloudValue('voters_list', '');
+                try {
+                    await setCloudValue('voters_list', '');
+                } catch(e) {}
                 localStorage.setItem('voters', JSON.stringify([]));
                 return [];
             }
@@ -211,11 +205,13 @@ async function getDB(key, defaultValue) {
             const listStr = await getCloudValue('candidates_list');
             if (listStr === null) {
                 const ids = defaultValue.map(c => c.id);
-                for (const c of defaultValue) {
-                    const serialized = serializeCandidate(c);
-                    await setCloudValue(`candidate_${c.id}`, serialized);
-                }
-                await setCloudValue('candidates_list', ids.join(','));
+                try {
+                    for (const c of defaultValue) {
+                        const serialized = serializeCandidate(c);
+                        await setCloudValue(`candidate_${c.id}`, serialized);
+                    }
+                    await setCloudValue('candidates_list', ids.join(','));
+                } catch(e) {}
                 localStorage.setItem('candidates', JSON.stringify(defaultValue));
                 return defaultValue;
             }
@@ -232,7 +228,9 @@ async function getDB(key, defaultValue) {
         } else {
             const valStr = await getCloudValue(key);
             if (valStr === null) {
-                await setCloudValue(key, JSON.stringify(defaultValue));
+                try {
+                    await setCloudValue(key, JSON.stringify(defaultValue));
+                } catch(e) {}
                 localStorage.setItem(key, JSON.stringify(defaultValue));
                 return defaultValue;
             }
@@ -241,6 +239,7 @@ async function getDB(key, defaultValue) {
         }
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
+        showOfflineWarningBadge();
         const local = localStorage.getItem(key);
         return local ? JSON.parse(local) : defaultValue;
     }
@@ -248,8 +247,8 @@ async function getDB(key, defaultValue) {
 
 // Helper to write item to cloud DB
 async function setDB(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
     try {
-        localStorage.setItem(key, JSON.stringify(value));
         if (key === 'voters') {
             const ids = [];
             for (const voter of value) {
@@ -271,6 +270,34 @@ async function setDB(key, value) {
         }
     } catch (err) {
         console.error(`Failed to write key "${key}" to cloud DB:`, err);
+        showOfflineWarningBadge();
+    }
+}
+
+function showOfflineWarningBadge() {
+    let badge = document.getElementById('cloud-offline-badge');
+    if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'cloud-offline-badge';
+        badge.style = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        `;
+        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)`;
+        document.body.appendChild(badge);
     }
 }
 
