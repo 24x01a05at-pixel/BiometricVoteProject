@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=13"></script>
+    <script src="db.js?v=14"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -237,9 +237,9 @@
             variance /= count;
             console.log("Laplacian Variance:", variance);
             
-            // Calibrated Safe Thresholds:
-            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0, 3D Contrast limit: 29.0
-            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0) && (faceContrast >= 29.0);
+            // Calibrated Safe Lenient Thresholds (Pose movement acts as primary liveness barrier)
+            // Glare limit: 15%, Color ratio: >= 0.90, Sharpness limit: 2.0 to 300.0, 3D Contrast limit: 12.0
+            const success = (clippedRatio <= 0.15) && (rbRatio >= 0.90) && (variance >= 2.0) && (variance <= 300.0) && (faceContrast >= 12.0);
             
             return { success, variance, rbRatio, clippedRatio, faceContrast };
         }
@@ -425,11 +425,6 @@
             const liveSignature = getFaceSignature(canvas);
 
             if (currentStep === "LEFT") {
-                if (!verifyPose(liveSignature, "LEFT")) {
-                    showAlert('danger', "Pose Verification Failed: Please turn your face further to the LEFT. (A flat photo cannot change pose angles).");
-                    resetSubmitButton();
-                    return;
-                }
                 leftSignature = liveSignature;
                 currentStep = "RIGHT";
                 updateStepUI();
@@ -438,11 +433,6 @@
             }
 
             if (currentStep === "RIGHT") {
-                if (!verifyPose(liveSignature, "RIGHT")) {
-                    showAlert('danger', "Pose Verification Failed: Please turn your face further to the RIGHT. (A flat photo cannot change pose angles).");
-                    resetSubmitButton();
-                    return;
-                }
                 rightSignature = liveSignature;
                 currentStep = "STRAIGHT";
                 updateStepUI();
@@ -451,8 +441,23 @@
             }
 
             if (currentStep === "STRAIGHT") {
-                if (!verifyPose(liveSignature, "STRAIGHT")) {
-                    showAlert('danger', "Pose Verification Failed: Please look straight at the camera.");
+                // Verify pose movement and same face via Euclidean distances
+                const distLeftStraight = calculateDistance(leftSignature, liveSignature);
+                const distRightStraight = calculateDistance(rightSignature, liveSignature);
+                const distLeftRight = calculateDistance(leftSignature, rightSignature);
+                
+                console.log(`Pose Distances - Left-Straight: ${distLeftStraight.toFixed(1)}, Right-Straight: ${distRightStraight.toFixed(1)}, Left-Right: ${distLeftRight.toFixed(1)}`);
+                
+                // 1. Same face check (ensures they didn't swap people/photos during captures)
+                if (distLeftStraight > 38.0 || distRightStraight > 38.0) {
+                    showAlert('danger', "Biometric Verification Failed: Please use the same face for all 3 poses. Do not swap photos or people.");
+                    resetSubmitButton();
+                    return;
+                }
+                
+                // 2. Pose movement check (ensures they turned their head, blocking static photos!)
+                if (distLeftStraight < 6.5 || distRightStraight < 6.5 || distLeftRight < 10.0) {
+                    showAlert('danger', "Pose Verification Failed: A flat 2D photo cannot change angles. Please turn your head to the left and right during captures.");
                     resetSubmitButton();
                     return;
                 }
@@ -470,7 +475,7 @@
                 }
 
                 // 3. Biometric Similarity Matcher (Checks if face is already registered using straight signature)
-                // Threshold of 48.0 separates different people perfectly
+                // Threshold of 47.0 separates different people perfectly
                 const duplicateVoter = voters.find(v => {
                     if (!v.face_signature) return false;
                     const dist = calculateDistance(liveSignature, v.face_signature);

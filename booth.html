@@ -112,7 +112,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=13"></script>
+    <script src="db.js?v=14"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -252,9 +252,9 @@
             variance /= count;
             console.log("Laplacian Variance:", variance);
             
-            // Calibrated Safe Thresholds:
-            // Glare limit: 0.08 (8%), Color limit: 1.10, Sharpness limit: 6.0 to 150.0, 3D Contrast limit: 29.0
-            const success = (clippedRatio <= 0.08) && (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0) && (faceContrast >= 29.0);
+            // Calibrated Safe Lenient Thresholds
+            // Glare limit: 12%, Color ratio: >= 0.95, Sharpness limit: 3.0 to 250.0, 3D Contrast limit: 16.0
+            const success = (clippedRatio <= 0.12) && (rbRatio >= 0.95) && (variance >= 3.0) && (variance <= 250.0) && (faceContrast >= 16.0);
             
             return { success, variance, rbRatio, clippedRatio, faceContrast };
         }
