@@ -112,7 +112,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=21"></script>
+    <script src="db.js?v=22"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -373,8 +373,8 @@
                 stretched[i] = ((grays[i] - min) / range) * 255.0;
             }
             
-            const gridW = 6;
-            const gridH = 6;
+            const gridW = 12;
+            const gridH = 12;
             const blockW = 120 / gridW;
             const blockH = 120 / gridH;
             
@@ -474,7 +474,7 @@
                 const dist = calculateDistance(liveSignature, targetVoter.face_signature);
                 console.log(`Facial recognition verification distance: ${dist}`);
                 
-                if (dist >= 48.0) {
+                if (dist >= 53.0) {
                     showAlert('danger', `Biometric Match Failed: Face does not match the registered biometrics for '${targetVoter.full_name}'!`);
                     resetScanButton();
                     return;
