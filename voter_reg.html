@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=19"></script>
+    <script src="db.js?v=20"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -194,8 +194,15 @@
                             gray[gIdx - 40] + gray[gIdx - 1] - 4 * gray[gIdx] + gray[gIdx + 1] + gray[gIdx + 40]
                         );
                         
-                        // Weight is a combination of color intensity and local detail density
-                        const weight = r * (1.0 + edgeVal);
+                        // 3. Center proximity weight bias (focus on central subject inside the blue oval)
+                        const dx = x - 20;
+                        const dy = y - 15;
+                        const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+                        // Fall off weight as we move away from center (max radius ~25)
+                        const centerWeight = Math.max(0.01, 1.0 - (distFromCenter / 22.0));
+                        
+                        // Combined weight
+                        const weight = r * (1.0 + edgeVal) * centerWeight;
                         sumX += x * weight;
                         sumY += y * weight;
                         totalWeight += weight;
