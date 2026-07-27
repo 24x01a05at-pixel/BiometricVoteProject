@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=15"></script>
+    <script src="db.js?v=16"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -511,14 +511,14 @@
                 console.log(`Pose Distances - Left-Straight: ${distLeftStraight.toFixed(1)}, Right-Straight: ${distRightStraight.toFixed(1)}, Left-Right: ${distLeftRight.toFixed(1)}`);
                 
                 // 1. Same face check (ensures they didn't swap people/photos during captures)
-                if (distLeftStraight > 48.0 || distRightStraight > 48.0) {
+                if (distLeftStraight > 65.0 || distRightStraight > 65.0) {
                     showAlert('danger', "Biometric Verification Failed: Please use the same face for all 3 poses. Do not swap photos or people.");
                     resetSubmitButton();
                     return;
                 }
                 
                 // 2. Pose movement check (ensures they turned their head, blocking static photos!)
-                if (distLeftStraight < 6.5 || distRightStraight < 6.5 || distLeftRight < 10.0) {
+                if (distLeftStraight < 5.0 || distRightStraight < 5.0 || distLeftRight < 8.0) {
                     showAlert('danger', "Pose Verification Failed: A flat 2D photo cannot change angles. Please turn your head to the left and right during captures.");
                     resetSubmitButton();
                     return;
