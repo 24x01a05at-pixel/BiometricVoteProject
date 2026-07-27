@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=20"></script>
+    <script src="db.js?v=21"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -552,12 +552,12 @@
                 }
 
                 // 3. Biometric Similarity Matcher (Checks if face is already registered using straight signature)
-                // Threshold of 47.0 separates different people perfectly
+                // Threshold of 53.0 separates different people perfectly while catching same-face duplicates
                 const duplicateVoter = voters.find(v => {
                     if (!v.face_signature) return false;
                     const dist = calculateDistance(liveSignature, v.face_signature);
                     console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                    return dist < 47.0; 
+                    return dist < 53.0; 
                 });
 
                 if (duplicateVoter) {
