@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=28"></script>
+    <script src="db.js?v=29"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -575,14 +575,7 @@
                     return;
                 }
 
-                // 2. Profile matching check (ensures it is the same face, blocking face swapping or camera panning to background)
-                if (distLeftStraight > 75.0 || distRightStraight > 75.0) {
-                    showAlert('danger', "Pose Verification Failed: Face profiles do not match. Please ensure the same face is visible and aligned throughout all steps.");
-                    resetSubmitButton();
-                    return;
-                }
-
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
+                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
 
                 const voters = await getDB('voters', []);
 
