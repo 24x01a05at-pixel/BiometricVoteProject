@@ -112,7 +112,7 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=27"></script>
+    <script src="db.js?v=28"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -437,7 +437,7 @@
             }
             const dist = Math.sqrt(sum / s1.length);
             if (s1.length === 36) {
-                return dist * 0.95; // scaling factor alignment
+                return dist * 1.35; // scaling factor alignment
             }
             return dist;
         }
