@@ -69,7 +69,12 @@
         <!-- Header Banner -->
         <div class="mb-5">
             <h1 class="display-3 hero-title mb-3"><i class="bi bi-shield-check me-2"></i>Secure Biometric Voting</h1>
-            <p class="lead text-light opacity-75">Facial Recognition & Tamper-Proof Election Protocol</p>
+            <p class="lead text-light opacity-75 mb-2">Facial Recognition & Tamper-Proof Election Protocol</p>
+            
+            <!-- Rotating Quotes Banner -->
+            <div id="quotes-container" class="text-white-50 fst-italic py-2 px-3 rounded shadow-sm d-flex align-items-center justify-content-center" style="font-size: 0.95rem; min-height: 40px; max-width: 650px; margin: 0.5rem auto 0 auto; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05);">
+                <span id="righteous-quote" style="transition: opacity 0.5s ease-in-out; opacity: 1;">"The ballot is stronger than the bullet." — Abraham Lincoln</span>
+            </div>
             
             <div class="mt-4">
                 <span id="state-badge" class="badge bg-secondary badge-status">Loading Election State...</span>
@@ -148,6 +153,20 @@
                     </div>
                 </a>
             </div>
+
+            <!-- Voter Profile Correction Tile -->
+            <div class="col-md-6 col-lg-3">
+                <a href="correction.html" class="text-decoration-none text-white">
+                    <div class="card feature-card p-4 text-start">
+                        <div class="icon-box bg-secondary bg-opacity-25 text-secondary" style="color: #a855f7 !important; background-color: rgba(168, 85, 247, 0.25) !important;">
+                            <i class="bi bi-pencil-square" style="color: #a855f7 !important;"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Voter Correction</h4>
+                        <p class="text-secondary small mb-4">Correct registered name, age, or gender details. Requires Admin approval.</p>
+                        <span class="fw-semibold small" style="color: #a855f7 !important;">Request Change <i class="bi bi-arrow-right ms-1"></i></span>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <div class="mt-5 text-secondary fs-6 d-flex justify-content-center gap-4 flex-wrap">
@@ -159,7 +178,7 @@
     </div>
 
     <!-- Init LocalStorage Data Script -->
-    <script src="db.js?v=32"></script>
+    <script src="db.js?v=33"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -235,6 +254,28 @@
             }
         }
         init();
+
+        // Righteous Quotes Rotator
+        const quotes = [
+            `"The ballot is stronger than the bullet." — Abraham Lincoln`,
+            `"A citizen's right to vote is the foundation of any democracy." — Chief Justice John Roberts`,
+            `"Talk is cheap, voting is free; take it to the polls." — Nanette L. Avery`,
+            `"There is no such thing as a vote that doesn’t matter." — Barack Obama`,
+            `"The ignorance of one voter in a democracy impairs the security of all." — John F. Kennedy`,
+            `"Elections belong to the people. It's their decision." — Abraham Lincoln`,
+            `"Voting is not only our right—it is our power." — Loung Ung`
+        ];
+        let quoteIndex = 0;
+        const quoteEl = document.getElementById('righteous-quote');
+        
+        setInterval(() => {
+            quoteEl.style.opacity = 0;
+            setTimeout(() => {
+                quoteIndex = (quoteIndex + 1) % quotes.length;
+                quoteEl.innerText = quotes[quoteIndex];
+                quoteEl.style.opacity = 1;
+            }, 500);
+        }, 6000);
     </script>
 <!-- Build Trigger -->
 </body>

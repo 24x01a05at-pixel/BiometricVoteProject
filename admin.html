@@ -163,6 +163,25 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Profile Correction Requests Card -->
+                    <div id="correction-requests-card" class="card card-custom p-4 bg-white mt-4 d-none">
+                        <h4 class="fw-bold mb-3"><i class="bi bi-pencil-square me-2" style="color: #a855f7;"></i>Voter Profile Correction Requests</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Original Details</th>
+                                        <th>Proposed Corrections</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="correction-requests-tbody">
+                                    <!-- Loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Side: Registered Voters Directory -->
@@ -241,7 +260,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=32"></script>
+    <script src="db.js?v=33"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -479,6 +498,39 @@
                 votersTbody.appendChild(tr);
             });
 
+            // Render Voter Profile Correction Requests
+            const requests = await getDB('correction_requests', []);
+            const pendingRequests = requests.filter(r => r.status === 'PENDING');
+            const correctionCard = document.getElementById('correction-requests-card');
+            const correctionTbody = document.getElementById('correction-requests-tbody');
+            correctionTbody.innerHTML = '';
+            
+            if (pendingRequests.length > 0) {
+                correctionCard.classList.remove('d-none');
+                pendingRequests.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <div class="fw-bold">${r.old_name}</div>
+                            <small class="text-muted">Age: ${r.old_age} | Gen: ${r.old_gender}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-success">${r.new_name}</div>
+                            <small class="text-success">Age: ${r.new_age} | Gen: ${r.new_gender}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button onclick="approveCorrection(${r.id})" class="btn btn-sm btn-success fw-bold">Approve</button>
+                                <button onclick="rejectCorrection(${r.id})" class="btn btn-sm btn-outline-danger fw-bold">Reject</button>
+                            </div>
+                        </td>
+                    `;
+                    correctionTbody.appendChild(tr);
+                });
+            } else {
+                correctionCard.classList.add('d-none');
+            }
+
             // Check for tie-breaker panels
             renderTieBreakerPanels(currentConfig, approvedCandidates);
         }
@@ -562,6 +614,49 @@
             await renderDashboard();
         }
 
+        async function approveCorrection(requestId) {
+            if (!confirm("Approve this profile correction request?")) return;
+            showSpinner("Approving correction...");
+            try {
+                const requests = await getDB('correction_requests', []);
+                const req = requests.find(r => r.id === requestId);
+                if (req) {
+                    req.status = 'APPROVED';
+                    
+                    const votersList = await getDB('voters', []);
+                    const voter = votersList.find(v => v.id === req.voter_id);
+                    if (voter) {
+                        voter.full_name = req.new_name;
+                        voter.age = req.new_age;
+                        voter.gender = req.new_gender;
+                        await setDB('voters', votersList);
+                    }
+                    await setDB('correction_requests', requests);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+            hideSpinner();
+            await renderDashboard();
+        }
+
+        async function rejectCorrection(requestId) {
+            if (!confirm("Reject this profile correction request?")) return;
+            showSpinner("Rejecting correction...");
+            try {
+                const requests = await getDB('correction_requests', []);
+                const req = requests.find(r => r.id === requestId);
+                if (req) {
+                    req.status = 'REJECTED';
+                    await setDB('correction_requests', requests);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+            hideSpinner();
+            await renderDashboard();
+        }
+
         async function deleteAllVoters() {
             const password = prompt("Please enter the Admin Password to confirm deleting ALL registered voters:");
             if (!password) return;
@@ -584,9 +679,10 @@
             }
             try {
                 await setDB('voters', []); // Clear the voter list index
+                await setDB('correction_requests', []); // Clear correction requests
             } catch(e) {}
             hideSpinner();
-            alert("All registered voters have been successfully deleted!");
+            alert("All registered voters and correction requests have been successfully deleted!");
             await renderDashboard();
         }
 
@@ -731,6 +827,7 @@
             await setDB('candidates', candidates);
             await setDB('voters', voters);
             await setDB('election_config', currentConfig);
+            await setDB('correction_requests', []);
             hideSpinner();
 
             document.getElementById('reset_pwd').value = '';
