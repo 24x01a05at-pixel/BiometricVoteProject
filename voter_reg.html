@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=26"></script>
+    <script src="db.js?v=27"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -575,11 +575,18 @@
                     return;
                 }
 
+                // 2. Profile matching check (ensures it is the same face, blocking face swapping or camera panning to background)
+                if (distLeftStraight > 65.0 || distRightStraight > 65.0) {
+                    showAlert('danger', "Pose Verification Failed: Face profiles do not match. Please ensure the same face is visible and aligned throughout all steps.");
+                    resetSubmitButton();
+                    return;
+                }
+
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing Facial Biometrics...';
 
                 const voters = await getDB('voters', []);
 
-                // 2. Duplicate check by Name
+                // 3. Duplicate check by Name
                 const exists = voters.some(v => v.full_name.toLowerCase() === name.toLowerCase());
                 if (exists) {
                     showAlert('danger', `Registration Blocked: A voter named '${name}' is already registered.`);
@@ -587,13 +594,13 @@
                     return;
                 }
 
-                // 3. Biometric Similarity Matcher (Checks if face is already registered using straight signature)
-                // Threshold of 58.0 separates different people perfectly while catching same-face duplicates
+                // 4. Biometric Similarity Matcher (Checks if face is already registered using straight signature)
+                // Threshold of 65.0 separates different people perfectly while strictly catching same-face duplicates
                 const duplicateVoter = voters.find(v => {
                     if (!v.face_signature) return false;
                     const dist = calculateDistance(liveSignature, v.face_signature);
                     console.log(`Facial recognition distance to ${v.full_name}: ${dist}`);
-                    return dist < 58.0; 
+                    return dist < 65.0; 
                 });
 
                 if (duplicateVoter) {

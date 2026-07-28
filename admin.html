@@ -241,7 +241,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=26"></script>
+    <script src="db.js?v=27"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -450,10 +450,18 @@
                     ? `<img src="${v.capture_path}" class="voter-thumb" alt="Voter Photo">`
                     : `<div class="voter-thumb-placeholder d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width: 40px; height: 40px; margin: 0 auto;"><i class="bi bi-person-fill text-secondary"></i></div>`;
                     
+                const isOutdated = !v.face_signature || v.face_signature.length !== 144;
+                const badgeHtml = isOutdated 
+                    ? `<span class="badge bg-danger d-block mt-1" style="font-size: 0.75rem; width: fit-content;" title="Outdated 6x6 biometric format. Please delete and re-register.">⚠️ Outdated Biometrics</span>`
+                    : '';
+                    
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${photoHtml}</td>
-                    <td class="fw-semibold">${v.full_name}</td>
+                    <td class="fw-semibold">
+                        ${v.full_name}
+                        ${badgeHtml}
+                    </td>
                     <td>
                         ${v.has_voted 
                             ? `<span class="badge bg-success">Voted (${v.candidate_chosen || 'Cast'})</span>` 
