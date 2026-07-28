@@ -94,6 +94,22 @@
                             <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
                         </div>
 
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Age</label>
+                                <input type="number" id="voter_age" class="form-control form-control-lg" placeholder="e.g. 21" min="1" max="120" required>
+                            </div>
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <label class="form-label fw-semibold">Gender</label>
+                                <select id="voter_gender" class="form-select form-select-lg" required>
+                                    <option value="" disabled selected>-- Select Gender --</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between mb-4 progress-steps">
                             <div id="step-left" class="step-item active-step text-center py-2 rounded">
                                 <span class="fw-bold">1. LEFT POSE</span>
@@ -131,7 +147,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=30"></script>
+    <script src="db.js?v=31"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -527,22 +543,36 @@
             }
         }
 
-        // Reset step if name input changes
-        document.getElementById('voter_name').addEventListener('input', function() {
+        function resetStep() {
             if (currentStep !== "LEFT") {
                 currentStep = "LEFT";
                 leftSignature = null;
                 rightSignature = null;
                 updateStepUI();
             }
-        });
+        }
+        document.getElementById('voter_name').addEventListener('input', resetStep);
+        document.getElementById('voter_age').addEventListener('input', resetStep);
+        document.getElementById('voter_gender').addEventListener('change', resetStep);
 
         regForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('voter_name').value.trim();
+            const ageVal = document.getElementById('voter_age').value.trim();
+            const gender = document.getElementById('voter_gender').value;
+            
             if (!name) {
                 showAlert('danger', "Please enter the voter name first.");
+                return;
+            }
+            const age = parseInt(ageVal);
+            if (isNaN(age) || age < 18) {
+                showAlert('danger', "Eligibility Denied: You must be 18 years or older to register as a voter.");
+                return;
+            }
+            if (!gender) {
+                showAlert('danger', "Please select your gender.");
                 return;
             }
 
@@ -651,6 +681,8 @@
                 voters.push({
                     id: Date.now(),
                     full_name: name,
+                    age: age,
+                    gender: gender,
                     has_voted: false,
                     capture_path: imageDataUrl,
                     face_signature: liveSignature,
@@ -666,6 +698,8 @@
 
                 showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
                 document.getElementById('voter_name').value = '';
+                document.getElementById('voter_age').value = '';
+                document.getElementById('voter_gender').selectedIndex = 0;
                 
                 // Reset state machine
                 currentStep = "LEFT";

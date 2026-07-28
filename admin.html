@@ -241,7 +241,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=30"></script>
+    <script src="db.js?v=31"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -455,16 +455,21 @@
                     ? `<span class="badge bg-danger d-block mt-1" style="font-size: 0.75rem; width: fit-content;" title="Outdated 6x6 biometric format. Please delete and re-register.">⚠️ Outdated Biometrics</span>`
                     : '';
                     
+                const ageGenderHtml = (v.age && v.gender)
+                    ? `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">Age: ${v.age} | Gender: ${v.gender}</small>`
+                    : '';
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${photoHtml}</td>
                     <td class="fw-semibold">
                         ${v.full_name}
+                        ${ageGenderHtml}
                         ${badgeHtml}
                     </td>
                     <td>
                         ${v.has_voted 
-                            ? `<span class="badge bg-success">Voted (${v.candidate_chosen || 'Cast'})</span>` 
+                            ? `<span class="badge bg-success">Voted</span>` 
                             : '<span class="badge bg-warning text-dark">Eligible</span>'}
                     </td>
                     <td>

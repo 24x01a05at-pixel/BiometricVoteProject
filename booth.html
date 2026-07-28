@@ -78,7 +78,7 @@
             <div class="col-lg-7">
                 <div class="card booth-card p-4 p-md-5">
                     <h2 class="fw-bold mb-2"><i class="bi bi-person-bounding-box text-success me-2"></i>Biometric Verification</h2>
-                    <p class="text-secondary mb-4">Look directly into the camera and select your name to verify your biometric identity before entering the ballot.</p>
+                    <p class="text-secondary mb-4">Look directly into the camera and enter your registered credentials to verify your biometric identity before entering the ballot.</p>
 
                     <div id="closed-alert" class="alert alert-danger py-3 fw-bold mb-4 d-none">
                         <i class="bi bi-exclamation-octagon-fill me-2"></i>VOTING IS CURRENTLY CLOSED BY ELECTION COMMISSION.
@@ -88,11 +88,24 @@
                         <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
 
                         <div class="mb-4 text-start">
-                            <label class="form-label small fw-bold text-white">Select Your Registered Name</label>
-                            <select id="voter_select" class="form-select form-select-lg bg-dark text-white border-secondary">
-                                <option value="" disabled selected>-- Select Your Name --</option>
-                                <!-- Loaded dynamically -->
-                            </select>
+                            <label class="form-label small fw-bold text-white">Voter Registered Full Name</label>
+                            <input type="text" id="voter_name_input" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="e.g. Rahul Sharma" required>
+                        </div>
+
+                        <div class="row mb-4 text-start">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-white">Age</label>
+                                <input type="number" id="voter_age_input" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="e.g. 21" min="1" max="120" required>
+                            </div>
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <label class="form-label small fw-bold text-white">Gender</label>
+                                <select id="voter_gender_input" class="form-select form-select-lg bg-dark text-white border-secondary" required>
+                                    <option value="" disabled selected>-- Select Gender --</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="webcam-box mb-4">
@@ -112,12 +125,14 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=30"></script>
+    <script src="db.js?v=31"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const alertBox = document.getElementById('alert-box');
-        const voterSelect = document.getElementById('voter_select');
+        const nameInput = document.getElementById('voter_name_input');
+        const ageInput = document.getElementById('voter_age_input');
+        const genderSelect = document.getElementById('voter_gender_input');
         const btnScan = document.getElementById('btn-scan');
         const closedAlert = document.getElementById('closed-alert');
         const activeSection = document.getElementById('booth-active-section');
@@ -137,18 +152,8 @@
                 return;
             }
 
-            // Populate voter select dropdown with eligible voters who haven't voted yet
-            const eligibleVoters = voters.filter(v => !v.has_voted);
-            
-            eligibleVoters.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.id;
-                opt.innerText = v.full_name;
-                voterSelect.appendChild(opt);
-            });
-
-            if (eligibleVoters.length === 0) {
-                showAlert('warning', "All registered voters have already cast their votes!");
+            if (voters.length === 0) {
+                showAlert('warning', "No voters are currently registered in this election system.");
                 btnScan.disabled = true;
             }
         }
@@ -482,9 +487,20 @@
         }
 
         btnScan.addEventListener('click', async function() {
-            const voterId = voterSelect.value;
-            if (!voterId) {
-                showAlert('danger', "Please select your registered name to simulate facial recognition scanning.");
+            const enteredName = nameInput.value.trim();
+            const enteredAge = ageInput.value.trim();
+            const enteredGender = genderSelect.value;
+            
+            if (!enteredName) {
+                showAlert('danger', "Please enter your registered full name.");
+                return;
+            }
+            if (!enteredAge) {
+                showAlert('danger', "Please enter your registered age.");
+                return;
+            }
+            if (!enteredGender) {
+                showAlert('danger', "Please select your registered gender.");
                 return;
             }
 
@@ -519,11 +535,16 @@
 
             // Re-fetch voters from cloud to check real-time state
             const freshVoters = await getDB('voters', []);
-            const targetVoter = freshVoters.find(v => v.id == voterId);
+            const targetVoter = freshVoters.find(v => {
+                const nameMatch = v.full_name.toLowerCase() === enteredName.toLowerCase();
+                const ageMatch = !v.age || v.age.toString() === enteredAge;
+                const genderMatch = !v.gender || v.gender === enteredGender;
+                return nameMatch && ageMatch && genderMatch;
+            });
             
             setTimeout(() => {
                 if (!targetVoter) {
-                    showAlert('danger', "Biometric Unrecognized: Face does not match any registered voter.");
+                    showAlert('danger', "Biometric Unrecognized: Verification details (Name, Age, or Gender) do not match any registered voter.");
                     resetScanButton();
                     return;
                 }
