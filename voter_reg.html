@@ -132,6 +132,9 @@
                                 <video id="webcam" autoplay playsinline muted></video>
                                 <div class="scan-overlay"></div>
                                 <div class="scan-bar"></div>
+                                <button type="button" id="btn-switch-camera" class="btn btn-dark btn-sm position-absolute d-none" style="top: 10px; right: 10px; z-index: 10; opacity: 0.85; border: 1px solid rgba(255,255,255,0.25);">
+                                    <i class="bi bi-camera-video-fill me-1"></i>Switch Camera
+                                </button>
                             </div>
                             <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
                         </div>
@@ -147,7 +150,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=31"></script>
+    <script src="db.js?v=32"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -155,22 +158,65 @@
         const alertBox = document.getElementById('alert-box');
         const submitBtn = document.getElementById('btn-submit');
 
-        // Access webcam
-        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-            .then(stream => {
+        let currentStream = null;
+        let videoDevices = [];
+        let currentDeviceIndex = 0;
+
+        async function startWebcam(deviceId = null) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: {
+                    width: 640,
+                    height: 480
+                }
+            };
+            if (deviceId) {
+                constraints.video.deviceId = { exact: deviceId };
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
                 video.srcObject = stream;
-                // Attempt immediate play
-                video.play().catch(e => console.warn("Immediate play blocked, waiting for metadata:", e));
+                // Immediate play
+                await video.play();
                 
-                // Backup play when metadata loads
-                video.onloadedmetadata = () => {
-                    video.play().catch(e => console.error("loadedmetadata play failed:", e));
-                };
-            })
-            .catch(err => {
-                console.error("Camera access denied:", err);
-                showAlert('danger', "Camera access denied. Please allow camera permissions to capture facial biometrics.");
-            });
+                // Enumerate cameras once we have permission
+                await enumerateCameras();
+            } catch (err) {
+                console.error("Camera access failed:", err);
+                showAlert('danger', "Camera access failed. Please ensure your camera is not in use and that you have granted browser permissions.");
+            }
+        }
+
+        async function enumerateCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                const switchBtn = document.getElementById('btn-switch-camera');
+                if (videoDevices.length > 1) {
+                    switchBtn.classList.remove('d-none');
+                } else {
+                    switchBtn.classList.add('d-none');
+                }
+            } catch (e) {
+                console.warn("Could not enumerate cameras:", e);
+            }
+        }
+
+        document.getElementById('btn-switch-camera').addEventListener('click', async () => {
+            if (videoDevices.length < 2) return;
+            currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+            const nextDevice = videoDevices[currentDeviceIndex];
+            await startWebcam(nextDevice.deviceId);
+        });
+
+        // Initialize webcam
+        startWebcam();
 
         function getFaceCenter(canvasEl) {
             const w = canvasEl.width;
