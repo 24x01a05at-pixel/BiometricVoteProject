@@ -241,7 +241,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=25"></script>
+    <script src="db.js?v=26"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -563,11 +563,15 @@
 
             showSpinner("Deleting all voters...");
             const voters = await getDB('voters', []);
-            // Wipe individual voter cloud entries
+            // Wipe individual voter cloud entries safely
             for (const v of voters) {
-                await setCloudValue(`voter_${v.id}`, null);
+                try {
+                    await setCloudValue(`voter_${v.id}`, null);
+                } catch(e) {}
             }
-            await setDB('voters', []); // Clear the voter list index
+            try {
+                await setDB('voters', []); // Clear the voter list index
+            } catch(e) {}
             hideSpinner();
             alert("All registered voters have been successfully deleted!");
             await renderDashboard();

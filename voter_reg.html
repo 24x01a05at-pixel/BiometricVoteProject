@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=25"></script>
+    <script src="db.js?v=26"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -387,14 +387,44 @@
             return signature;
         }
 
+        function downsample12To6(sig12) {
+            const sig6 = [];
+            for (let gy = 0; gy < 6; gy++) {
+                for (let gx = 0; gx < 6; gx++) {
+                    let sum = 0;
+                    sum += sig12[(gy * 2 + 0) * 12 + (gx * 2 + 0)];
+                    sum += sig12[(gy * 2 + 0) * 12 + (gx * 2 + 1)];
+                    sum += sig12[(gy * 2 + 1) * 12 + (gx * 2 + 0)];
+                    sum += sig12[(gy * 2 + 1) * 12 + (gx * 2 + 1)];
+                    sig6.push(Math.round(sum / 4));
+                }
+            }
+            return sig6;
+        }
+
         function calculateDistance(sig1, sig2) {
-            if (!sig1 || !sig2 || sig1.length !== sig2.length) return 999;
+            if (!sig1 || !sig2) return 999;
+            let s1 = sig1;
+            let s2 = sig2;
+            
+            if (s1.length === 144 && s2.length === 36) {
+                s1 = downsample12To6(s1);
+            } else if (s1.length === 36 && s2.length === 144) {
+                s2 = downsample12To6(s2);
+            }
+            
+            if (s1.length !== s2.length) return 999;
+            
             let sum = 0;
-            for (let i = 0; i < sig1.length; i++) {
-                let diff = sig1[i] - sig2[i];
+            for (let i = 0; i < s1.length; i++) {
+                let diff = s1[i] - s2[i];
                 sum += diff * diff;
             }
-            return Math.sqrt(sum / sig1.length);
+            const dist = Math.sqrt(sum / s1.length);
+            if (s1.length === 36) {
+                return dist * 0.95; // scaling factor alignment
+            }
+            return dist;
         }
 
         function showAlert(type, message) {
