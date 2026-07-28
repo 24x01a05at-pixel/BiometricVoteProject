@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=23"></script>
+    <script src="db.js?v=24"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -143,9 +143,13 @@
         navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
             .then(stream => {
                 video.srcObject = stream;
-                video.addEventListener('loadedmetadata', () => {
-                    video.play().catch(e => console.error("Error playing video:", e));
-                });
+                // Attempt immediate play
+                video.play().catch(e => console.warn("Immediate play blocked, waiting for metadata:", e));
+                
+                // Backup play when metadata loads
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error("loadedmetadata play failed:", e));
+                };
             })
             .catch(err => {
                 console.error("Camera access denied:", err);
