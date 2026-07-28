@@ -113,7 +113,7 @@
                         <div class="mb-4 text-center">
                             <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
                             <div class="webcam-container">
-                                <video id="webcam" autoplay playsinline></video>
+                                <video id="webcam" autoplay playsinline muted></video>
                                 <div class="scan-overlay"></div>
                                 <div class="scan-bar"></div>
                             </div>
@@ -131,7 +131,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=22"></script>
+    <script src="db.js?v=23"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -143,6 +143,9 @@
         navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
             .then(stream => {
                 video.srcObject = stream;
+                video.addEventListener('loadedmetadata', () => {
+                    video.play().catch(e => console.error("Error playing video:", e));
+                });
             })
             .catch(err => {
                 console.error("Camera access denied:", err);
