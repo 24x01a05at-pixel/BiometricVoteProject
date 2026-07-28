@@ -97,8 +97,10 @@ function base64ToSignature(base64Str) {
 
 function serializeVoter(voter) {
     const sigBase64 = signatureToBase64(voter.face_signature || []);
+    const leftBase64 = signatureToBase64(voter.left_signature || []);
+    const rightBase64 = signatureToBase64(voter.right_signature || []);
     const votedVal = voter.has_voted ? "1" : "0";
-    return `${voter.id}|${voter.full_name}|${votedVal}|${sigBase64}`;
+    return `${voter.id}|${voter.full_name}|${votedVal}|${sigBase64}|${leftBase64}|${rightBase64}`;
 }
 
 function deserializeVoter(rawStr) {
@@ -107,6 +109,8 @@ function deserializeVoter(rawStr) {
     const full_name = parts[1];
     const has_voted = parts[2] === "1";
     const face_signature = base64ToSignature(parts[3] || "");
+    const left_signature = parts[4] ? base64ToSignature(parts[4]) : [];
+    const right_signature = parts[5] ? base64ToSignature(parts[5]) : [];
     
     let capture_path = null;
     try {
@@ -122,6 +126,8 @@ function deserializeVoter(rawStr) {
         full_name,
         has_voted,
         face_signature,
+        left_signature,
+        right_signature,
         capture_path
     };
 }
