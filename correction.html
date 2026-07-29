@@ -254,134 +254,258 @@
 
         startWebcam();
 
-        // Biometric Face Liveness check helper
-        function checkLiveness(canvasEl) {
-            const ctx = canvasEl.getContext('2d');
-            const frame = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
-            const data = frame.data;
-            
-            let redSum = 0, blueSum = 0, count = 0;
-            let totalBr = 0;
-            let squareDiff = 0;
-            
-            const step = 4;
-            for (let i = 0; i < data.length; i += 4 * step) {
-                let r = data[i];
-                let g = data[i+1];
-                let b = data[i+2];
-                
-                redSum += r;
-                blueSum += b;
-                let brightness = (r + g + b) / 3;
-                totalBr += brightness;
-                count++;
-            }
-            
-            const avgBr = totalBr / count;
-            for (let i = 0; i < data.length; i += 4 * step) {
-                let r = data[i];
-                let g = data[i+1];
-                let b = data[i+2];
-                let brightness = (r + g + b) / 3;
-                squareDiff += (brightness - avgBr) * (brightness - avgBr);
-            }
-            
-            const variance = Math.sqrt(squareDiff / count);
-            const rbRatio = redSum / (blueSum || 1);
-            
-            let faceBrightness = 0;
-            let borderBrightness = 0;
-            let faceCount = 0;
-            let borderCount = 0;
-            
+        // Grayscale / Skin-Edge dynamic face center tracker (matching booth.html)
+        function getFaceCenter(canvasEl) {
             const w = canvasEl.width;
             const h = canvasEl.height;
-            for (let y = 0; y < h; y += 10) {
-                for (let x = 0; x < w; x += 10) {
-                    const dx = (x - w/2) / (w * 0.35);
-                    const dy = (y - h/2) / (h * 0.40);
-                    const inside = (dx*dx + dy*dy) <= 1.0;
+            
+            let bestX = w / 2;
+            let bestY = h / 2;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 40;
+            tempCanvas.height = 30;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasEl, 0, 0, 40, 30);
+            
+            const imgData = tempCtx.getImageData(0, 0, 40, 30);
+            const data = imgData.data;
+            
+            const gray = new Float32Array(40 * 30);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            }
+            
+            let sumX = 0;
+            let sumY = 0;
+            let totalWeight = 0;
+            
+            for (let y = 2; y < 28; y++) {
+                for (let x = 2; x < 38; x++) {
+                    const idx = (y * 40 + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx+1];
+                    const b = data[idx+2];
                     
-                    const idx = (y * w + x) * 4;
-                    const br = (data[idx] + data[idx+1] + data[idx+2]) / 3;
+                    const rbRatio = r / (b || 1.0);
+                    const isSkinColor = (r > 40 && g > 30 && b > 20 && r > g && (r - b) > 18 && rbRatio >= 1.10 && rbRatio <= 2.2);
                     
-                    if (inside) {
-                        faceBrightness += br;
-                        faceCount++;
-                    } else {
-                        borderBrightness += br;
-                        borderCount++;
+                    if (isSkinColor) {
+                        const gIdx = y * 40 + x;
+                        const edgeVal = Math.abs(
+                            gray[gIdx - 40] + gray[gIdx - 1] - 4 * gray[gIdx] + gray[gIdx + 1] + gray[gIdx + 40]
+                        );
+                        
+                        const dx = x - 20;
+                        const dy = y - 15;
+                        const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+                        const centerWeight = Math.max(0.01, 1.0 - (distFromCenter / 22.0));
+                        
+                        const weight = r * (1.0 + edgeVal) * centerWeight;
+                        sumX += x * weight;
+                        sumY += y * weight;
+                        totalWeight += weight;
                     }
                 }
             }
             
-            const faceContrast = Math.abs((faceBrightness / (faceCount || 1)) - (borderBrightness / (borderCount || 1)));
-            
-            let clippedPixels = 0;
-            for (let i = 0; i < data.length; i += 4 * step) {
-                if (data[i] > 250 && data[i+1] > 250 && data[i+2] > 250) {
-                    clippedPixels++;
-                }
+            if (totalWeight > 100) {
+                bestX = (sumX / totalWeight) * (w / 40);
+                bestY = (sumY / totalWeight) * (h / 30);
             }
-            const clippedRatio = clippedPixels / count;
-            
-            const success = (rbRatio >= 1.10) && (variance >= 5.0) && (variance <= 150.0) && (faceContrast >= 20.0) && (clippedRatio <= 0.08);
-            
-            return {
-                success,
-                variance,
-                rbRatio,
-                faceContrast,
-                clippedRatio
-            };
+            return { x: bestX, y: bestY };
         }
 
-        // 12x12 Signature extraction
-        function getFaceSignature(canvasEl) {
+        // Biometric Face Liveness check helper (exactly matches booth.html)
+        function checkLiveness(canvasEl) {
             const ctx = canvasEl.getContext('2d');
-            const w = canvasEl.width;
-            const h = canvasEl.height;
+            const width = 160;
+            const height = 120;
             
-            const blocksX = 12;
-            const blocksY = 12;
-            const sig = [];
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
             
-            const rectWidth = Math.floor((w * 0.7) / blocksX);
-            const rectHeight = Math.floor((h * 0.8) / blocksY);
-            const startX = Math.floor(w * 0.15);
-            const startY = Math.floor(h * 0.1);
+            const center = getFaceCenter(canvasEl);
+            const cropSize = Math.min(canvasEl.width * 0.55, canvasEl.height * 0.55);
+            let cropX = center.x - cropSize / 2;
+            let cropY = center.y - cropSize / 2;
             
-            for (let y = 0; y < blocksY; y++) {
-                for (let x = 0; x < blocksX; x++) {
-                    const bx = startX + x * rectWidth;
-                    const by = startY + y * rectHeight;
-                    const imgData = ctx.getImageData(bx, by, rectWidth, rectHeight);
-                    const d = imgData.data;
-                    
-                    let sum = 0;
-                    for (let i = 0; i < d.length; i += 4) {
-                        sum += (d[i] + d[i+1] + d[i+2]) / 3;
-                    }
-                    sig.push(Math.round(sum / (d.length / 4)));
+            if (cropX < 0) cropX = 0;
+            if (cropY < 0) cropY = 0;
+            if (cropX + cropSize > canvasEl.width) cropX = canvasEl.width - cropSize;
+            if (cropY + cropSize > canvasEl.height) cropY = canvasEl.height - cropSize;
+            
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropSize, cropSize, 0, 0, width, height);
+            
+            const imgData = tempCtx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            
+            let clippedCount = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
+                    clippedCount++;
+                }
+            }
+            const clippedRatio = clippedCount / (width * height);
+            
+            let rSum = 0;
+            let bSum = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                rSum += data[i];
+                bSum += data[i+2];
+            }
+            const rbRatio = rSum / (bSum || 1.0);
+            
+            const gray = new Float32Array(width * height);
+            let graySum = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const gVal = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                gray[i / 4] = gVal;
+                graySum += gVal;
+            }
+            const grayMean = graySum / gray.length;
+            let grayVar = 0;
+            for (let i = 0; i < gray.length; i++) {
+                grayVar += (gray[i] - grayMean) ** 2;
+            }
+            const faceContrast = Math.sqrt(grayVar / gray.length);
+            
+            const laplacian = new Float32Array(width * height);
+            let mean = 0;
+            let count = 0;
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    const val = 
+                        gray[idx - width] + 
+                        gray[idx - 1] +     
+                        -4 * gray[idx] +    
+                        gray[idx + 1] +     
+                        gray[idx + width];  
+                        
+                    laplacian[idx] = val;
+                    mean += val;
+                    count++;
                 }
             }
             
-            // Local Contrast Stretching normalization
-            const minVal = Math.min(...sig);
-            const maxVal = Math.max(...sig);
-            const range = (maxVal - minVal) || 1;
-            return sig.map(v => Math.round(((v - minVal) / range) * 255));
+            mean /= count;
+            
+            let variance = 0;
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    const diff = laplacian[idx] - mean;
+                    variance += diff * diff;
+                }
+            }
+            variance /= count;
+            
+            // Calibrated Safe Lenient Thresholds
+            const success = (clippedRatio <= 0.12) && (rbRatio >= 0.95) && (variance >= 3.0) && (variance <= 250.0) && (faceContrast >= 16.0);
+            
+            return { success, variance, rbRatio, clippedRatio, faceContrast };
+        }
+
+        // Crop-based 12x12 Signature extraction
+        function getFaceSignature(canvasEl) {
+            const center = getFaceCenter(canvasEl);
+            const cropSize = Math.min(canvasEl.width * 0.55, canvasEl.height * 0.55);
+            let cropX = center.x - cropSize / 2;
+            let cropY = center.y - cropSize / 2;
+            
+            if (cropX < 0) cropX = 0;
+            if (cropY < 0) cropY = 0;
+            if (cropX + cropSize > canvasEl.width) cropX = canvasEl.width - cropSize;
+            if (cropY + cropSize > canvasEl.height) cropY = canvasEl.height - cropSize;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 120;
+            tempCanvas.height = 120;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasEl, cropX, cropY, cropSize, cropSize, 0, 0, 120, 120);
+            
+            const imgData = tempCtx.getImageData(0, 0, 120, 120).data;
+            const grays = new Float32Array(120 * 120);
+            
+            let min = 255;
+            let max = 0;
+            for (let i = 0; i < imgData.length; i += 4) {
+                const gray = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
+                grays[i / 4] = gray;
+                if (gray < min) min = gray;
+                if (gray > max) max = gray;
+            }
+            
+            const range = (max - min) || 1.0;
+            const stretched = new Float32Array(120 * 120);
+            for (let i = 0; i < grays.length; i++) {
+                stretched[i] = ((grays[i] - min) / range) * 255.0;
+            }
+            
+            const gridW = 12;
+            const gridH = 12;
+            const blockW = 120 / gridW;
+            const blockH = 120 / gridH;
+            
+            const signature = [];
+            for (let gy = 0; gy < gridH; gy++) {
+                for (let gx = 0; gx < gridW; gx++) {
+                    let sum = 0;
+                    let count = 0;
+                    for (let py = Math.floor(gy * blockH); py < Math.floor((gy + 1) * blockH); py++) {
+                        for (let px = Math.floor(gx * blockW); px < Math.floor((gx + 1) * blockW); px++) {
+                            sum += stretched[py * 120 + px];
+                            count++;
+                        }
+                    }
+                    signature.push(Math.round(sum / count));
+                }
+            }
+            return signature;
+        }
+
+        function downsample12To6(sig12) {
+            const sig6 = [];
+            for (let gy = 0; gy < 6; gy++) {
+                for (let gx = 0; gx < 6; gx++) {
+                    let sum = 0;
+                    sum += sig12[(gy * 2 + 0) * 12 + (gx * 2 + 0)];
+                    sum += sig12[(gy * 2 + 0) * 12 + (gx * 2 + 1)];
+                    sum += sig12[(gy * 2 + 1) * 12 + (gx * 2 + 0)];
+                    sum += sig12[(gy * 2 + 1) * 12 + (gx * 2 + 1)];
+                    sig6.push(Math.round(sum / 4));
+                }
+            }
+            return sig6;
         }
 
         function calculateDistance(sig1, sig2) {
             if (!sig1 || !sig2) return 999;
-            if (sig1.length !== sig2.length) return 999;
+            let s1 = sig1;
+            let s2 = sig2;
+            
+            if (s1.length === 144 && s2.length === 36) {
+                s1 = downsample12To6(s1);
+            } else if (s1.length === 36 && s2.length === 144) {
+                s2 = downsample12To6(s2);
+            }
+            
+            if (s1.length !== s2.length) return 999;
+            
             let sum = 0;
-            for (let i = 0; i < sig1.length; i++) {
-                let diff = sig1[i] - sig2[i];
+            for (let i = 0; i < s1.length; i++) {
+                let diff = s1[i] - s2[i];
                 sum += diff * diff;
             }
-            return Math.sqrt(sum / sig1.length);
+            const dist = Math.sqrt(sum / s1.length);
+            if (s1.length === 36) {
+                return dist * 1.35;
+            }
+            return dist;
         }
 
         function calculateShiftedDistance(sig1, sig2) {
