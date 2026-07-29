@@ -123,9 +123,9 @@
                         </div>
                         <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
 
-                        <button id="btn-scan" class="btn btn-purple btn-lg px-5 py-3 fw-bold w-100 fs-5">
-                            <i class="bi bi-person-check-fill me-2"></i>VERIFY IDENTITY & EDIT PROFILE
-                        </button>
+                        <div id="scanner-status" class="alert alert-secondary text-center py-2 border-0 fw-bold" style="background: rgba(255, 255, 255, 0.05); color: #c084fc;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>Scanning Face... Align inside the oval frame
+                        </div>
                     </div>
 
                     <!-- Step 2: Edit Form (Initially Hidden) -->
@@ -176,12 +176,12 @@
         <p class="mb-0 text-white-50 fst-italic" style="font-size: 0.9rem;">"Elections belong to the people. It's their decision." — Abraham Lincoln</p>
     </footer>
 
-    <script src="db.js?v=32"></script>
+    <script src="db.js?v=34"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const alertBox = document.getElementById('alert-box');
-        const btnScan = document.getElementById('btn-scan');
+        const scannerStatus = document.getElementById('scanner-status');
         const verificationSection = document.getElementById('verification-section');
         const editSection = document.getElementById('edit-section');
         const verifiedNameBadge = document.getElementById('verified-name-badge');
@@ -196,7 +196,7 @@
             hideSpinner();
             if (voters.length === 0) {
                 showAlert('warning', "No voters currently registered in the database.");
-                btnScan.disabled = true;
+                scannerStatus.innerHTML = '<span class="text-danger">Verification Locked: No voters registered</span>';
             }
         }
         init();
@@ -224,6 +224,7 @@
                 video.srcObject = stream;
                 await video.play();
                 await enumerateCameras();
+                startAutoScanner();
             } catch (err) {
                 console.error("Camera access failed:", err);
                 showAlert('danger', "Camera access failed. Please ensure your camera is not in use and that you have granted browser permissions.");
@@ -324,7 +325,7 @@
             }
             const clippedRatio = clippedPixels / count;
             
-            const success = (rbRatio >= 1.10) && (variance >= 6.0) && (variance <= 150.0) && (faceContrast >= 29.0) && (clippedRatio <= 0.08);
+            const success = (rbRatio >= 1.10) && (variance >= 5.0) && (variance <= 150.0) && (faceContrast >= 20.0) && (clippedRatio <= 0.08);
             
             return {
                 success,
@@ -423,81 +424,78 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function resetScanButton() {
-            btnScan.disabled = false;
-            btnScan.innerHTML = '<i class="bi bi-person-check-fill me-2"></i>VERIFY IDENTITY & EDIT PROFILE';
-        }
+        let scanInterval = null;
 
-        // Scan click handler
-        btnScan.addEventListener('click', async () => {
-            btnScan.disabled = true;
-            btnScan.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying Facial Biometrics...';
-            alertBox.classList.add('d-none');
+        function startAutoScanner() {
+            if (scanInterval) clearInterval(scanInterval);
+            scanInterval = setInterval(async () => {
+                // If editSection is visible, stop scanning
+                if (!editSection.classList.contains('d-none')) {
+                    clearInterval(scanInterval);
+                    return;
+                }
 
-            // Draw to canvas
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                // Draw to canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Check liveness
-            const liveness = checkLiveness(canvas);
-            if (!liveness.success) {
-                showAlert('danger', "Biometric Spoof Detected: Please verify in front of a real, well-lit webcam. Digital screen photos or printouts are blocked.");
-                resetScanButton();
-                return;
-            }
+                // Run liveness check
+                const liveness = checkLiveness(canvas);
+                if (!liveness.success) {
+                    scannerStatus.innerHTML = `<span class="spinner-border spinner-border-sm me-2 text-danger"></span>Scanning... Adjust lighting or center face`;
+                    return;
+                }
 
-            const liveSignature = getFaceSignature(canvas);
+                const liveSignature = getFaceSignature(canvas);
 
-            // Re-fetch voters
-            const freshVoters = await getDB('voters', []);
-            
-            // Match against ALL registered voters using shifted-matching
-            let matchedVoter = null;
-            let minDistance = 999;
-            
-            freshVoters.forEach(v => {
-                if (v.face_signature) {
-                    const dist = calculateShiftedDistance(liveSignature, v.face_signature);
-                    if (dist < minDistance && dist < 53.0) {
-                        minDistance = dist;
-                        matchedVoter = v;
+                // Re-fetch voters
+                const freshVoters = await getDB('voters', []);
+                
+                let matchedVoter = null;
+                let minDistance = 999;
+                
+                freshVoters.forEach(v => {
+                    if (v.face_signature) {
+                        const dist = calculateShiftedDistance(liveSignature, v.face_signature);
+                        if (dist < minDistance && dist < 53.0) {
+                            minDistance = dist;
+                            matchedVoter = v;
+                        }
                     }
-                }
-            });
+                });
 
-            setTimeout(() => {
-                if (!matchedVoter) {
-                    showAlert('danger', "Biometric Match Failed: Face signature does not match any registered voter.");
-                    resetScanButton();
-                    return;
-                }
+                if (matchedVoter) {
+                    clearInterval(scanInterval);
 
-                // If voter has already voted, block correction to prevent election manipulation
-                if (matchedVoter.has_voted) {
-                    showAlert('danger', "Correction Denied: This voter profile has already cast a vote. Profile changes are locked after voting.");
-                    resetScanButton();
-                    return;
-                }
+                    // Check if already voted
+                    if (matchedVoter.has_voted) {
+                        showAlert('danger', "Correction Denied: This voter profile has already cast a vote. Profile changes are locked after voting.");
+                        scannerStatus.innerHTML = '<span class="text-danger">Verification Locked: Already Voted</span>';
+                        return;
+                    }
 
-                // Match found! Unlock Edit section
-                verifiedVoter = matchedVoter;
-                
-                // Stop camera stream to free hardware resources
-                if (currentStream) {
-                    currentStream.getTracks().forEach(track => track.stop());
-                }
+                    // Match found! Unlock edit section
+                    verifiedVoter = matchedVoter;
+                    
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(track => track.stop());
+                    }
 
-                verificationSection.classList.add('d-none');
-                verifiedNameBadge.innerText = `${verifiedVoter.full_name} (Age: ${verifiedVoter.age || 'N/A'}, Gender: ${verifiedVoter.gender || 'N/A'})`;
-                
-                // Prefill form
-                document.getElementById('new_name').value = verifiedVoter.full_name;
-                document.getElementById('new_age').value = verifiedVoter.age || '';
-                document.getElementById('new_gender').value = verifiedVoter.gender || '';
-                
-                editSection.classList.remove('d-none');
-            }, 2000);
-        });
+                    verificationSection.classList.add('d-none');
+                    alertBox.classList.add('d-none');
+                    verifiedNameBadge.innerText = `${verifiedVoter.full_name} (Age: ${verifiedVoter.age || 'N/A'}, Gender: ${verifiedVoter.gender || 'N/A'})`;
+                    
+                    // Prefill form
+                    document.getElementById('new_name').value = verifiedVoter.full_name;
+                    document.getElementById('new_age').value = verifiedVoter.age || '';
+                    document.getElementById('new_gender').value = verifiedVoter.gender || '';
+                    
+                    editSection.classList.remove('d-none');
+                } else {
+                    scannerStatus.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Aligning face... Scanning database`;
+                }
+            }, 1000);
+        }
 
         // Form submission
         correctionForm.addEventListener('submit', async (e) => {
