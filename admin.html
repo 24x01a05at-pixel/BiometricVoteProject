@@ -260,7 +260,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=35"></script>
+    <script src="db.js?v=36"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -885,6 +885,176 @@
             a.setAttribute('download', 'Official_Election_Results.csv');
             a.click();
         }
+
+        // Automatic Real-Time Synchronization Listeners
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && sessionStorage.getItem('admin_logged_in') === 'true') {
+                await renderDashboard();
+            }
+        });
+
+        window.addEventListener('storage', async (e) => {
+            if (sessionStorage.getItem('admin_logged_in') === 'true') {
+                if (e.key === 'correction_requests' || e.key === 'voters' || e.key === 'candidates' || e.key === 'election_config') {
+                    await renderDashboard();
+                }
+            }
+        });
+
+        // 3-second silent dashboard state updater
+        setInterval(async () => {
+            if (sessionStorage.getItem('admin_logged_in') !== 'true') return;
+            try {
+                const currentConfig = await getDB('election_config', { status: 'NOT_STARTED' });
+                const voters = await getDB('voters', []);
+                const candidates = await getDB('candidates', []);
+
+                const totalReg = voters.length;
+                const votedCount = voters.filter(v => v.has_voted).length;
+                const pendingCount = totalReg - votedCount;
+                const approvedCandidates = candidates.filter(c => c.approved);
+
+                // Update counts
+                const totalEl = document.getElementById('stat-total-voters');
+                const votedEl = document.getElementById('stat-voted-count');
+                const pendingEl = document.getElementById('stat-pending-count');
+                const approvedEl = document.getElementById('stat-approved-count');
+                
+                if (totalEl) totalEl.innerText = totalReg;
+                if (votedEl) votedEl.innerText = votedCount;
+                if (pendingEl) pendingEl.innerText = pendingCount;
+                if (approvedEl) approvedEl.innerText = approvedCandidates.length;
+
+                // Candidates table
+                const approvedTbody = document.getElementById('approved-candidates-tbody');
+                if (approvedTbody) {
+                    approvedTbody.innerHTML = '';
+                    approvedCandidates.sort((a,b) => b.votes - a.votes).forEach(c => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${getCandidateLogoHtml(c.logo_path)}</td>
+                            <td class="fw-semibold">${c.name}</td>
+                            <td><span class="badge bg-secondary">${c.party_name}</span></td>
+                            <td class="fw-bold text-primary">${c.votes || 0}</td>
+                            <td class="fw-bold text-warning">+${c.tie_votes || 0}</td>
+                            <td>
+                                ${c.name.toUpperCase() === 'NOTA' 
+                                    ? '<span class="badge bg-secondary px-2 py-1"><i class="bi bi-shield-lock me-1"></i>Permanent</span>' 
+                                    : `<button onclick="deleteCandidate(${c.id})" class="btn btn-sm btn-danger fw-bold"><i class="bi bi-trash-fill me-1"></i>Delete</button>`}
+                            </td>
+                        `;
+                        approvedTbody.appendChild(tr);
+                    });
+                }
+
+                // Voters list
+                const votersTbody = document.getElementById('voters-directory-tbody');
+                if (votersTbody) {
+                    votersTbody.innerHTML = '';
+                    voters.sort((a,b) => a.full_name.localeCompare(b.full_name)).forEach(v => {
+                        const photoHtml = v.photo_base64 
+                            ? `<img src="${v.photo_base64}" class="voter-thumb border" alt="Voter">` 
+                            : `<div class="voter-thumb-placeholder d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width: 40px; height: 40px; margin: 0 auto;"><i class="bi bi-person-fill text-secondary"></i></div>`;
+                            
+                        const isOutdated = !v.face_signature || v.face_signature.length !== 144;
+                        const badgeHtml = isOutdated 
+                            ? `<span class="badge bg-danger d-block mt-1" style="font-size: 0.75rem; width: fit-content;" title="Outdated 6x6 biometric format. Please delete and re-register.">⚠️ Outdated Biometrics</span>`
+                            : '';
+                            
+                        const ageGenderHtml = (v.age && v.gender)
+                            ? `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">Age: ${v.age} | Gender: ${v.gender}</small>`
+                            : '';
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${photoHtml}</td>
+                            <td class="fw-semibold">
+                                ${v.full_name}
+                                ${ageGenderHtml}
+                                ${badgeHtml}
+                            </td>
+                            <td>
+                                ${v.has_voted 
+                                    ? `<span class="badge bg-success">Voted</span>` 
+                                    : '<span class="badge bg-warning text-dark">Eligible</span>'}
+                            </td>
+                            <td>
+                                <button onclick="deleteVoter(${v.id})" class="btn btn-sm btn-danger fw-bold"><i class="bi bi-trash-fill me-1"></i>Delete</button>
+                            </td>
+                        `;
+                        votersTbody.appendChild(tr);
+                    });
+                }
+
+                // Profile Correction Requests
+                const requests = await getDB('correction_requests', []);
+                const pendingRequests = requests.filter(r => r.status === 'PENDING');
+                const correctionCard = document.getElementById('correction-requests-card');
+                const correctionTbody = document.getElementById('correction-requests-tbody');
+                
+                if (correctionCard && correctionTbody) {
+                    correctionTbody.innerHTML = '';
+                    if (pendingRequests.length > 0) {
+                        correctionCard.classList.remove('d-none');
+                        pendingRequests.forEach(r => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>
+                                    <div class="fw-bold">${r.old_name}</div>
+                                    <small class="text-muted">Age: ${r.old_age} | Gen: ${r.old_gender}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-success">${r.new_name}</div>
+                                    <small class="text-success">Age: ${r.new_age} | Gen: ${r.new_gender}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button onclick="approveCorrection(${r.id})" class="btn btn-sm btn-success fw-bold">Approve</button>
+                                        <button onclick="rejectCorrection(${r.id})" class="btn btn-sm btn-outline-danger fw-bold">Reject</button>
+                                    </div>
+                                </td>
+                            `;
+                            correctionTbody.appendChild(tr);
+                        });
+                    } else {
+                        correctionCard.classList.add('d-none');
+                    }
+                }
+
+                // Nomination approval table
+                if (currentConfig.status === 'NOT_STARTED') {
+                    const pendingNomTable = document.getElementById('pending-nominees-tbody');
+                    if (pendingNomTable) {
+                        const pendingNomList = candidates.filter(c => !c.approved);
+                        pendingNomTable.innerHTML = '';
+                        if (pendingNomList.length > 0) {
+                            const sectionEl = document.getElementById('pending-nominees-section');
+                            if (sectionEl) sectionEl.classList.remove('d-none');
+                            pendingNomList.forEach(c => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `
+                                    <td>${getCandidateLogoHtml(c.logo_path)}</td>
+                                    <td class="fw-semibold">${c.name}</td>
+                                    <td><span class="badge bg-secondary">${c.party_name}</span></td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <button onclick="approveNominee(${c.id})" class="btn btn-sm btn-success fw-bold">Approve</button>
+                                            <button onclick="rejectNominee(${c.id})" class="btn btn-sm btn-danger fw-bold">Reject</button>
+                                        </div>
+                                    </td>
+                                `;
+                                pendingNomTable.appendChild(tr);
+                            });
+                        } else {
+                            const sectionEl = document.getElementById('pending-nominees-section');
+                            if (sectionEl) sectionEl.classList.add('d-none');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("Silent sync background check failed:", err);
+            }
+        }, 3000);
     </script>
 </body>
 </html>

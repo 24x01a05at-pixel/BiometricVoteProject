@@ -197,6 +197,19 @@ async function getDB(key, defaultValue) {
         if (key === 'voters') {
             const listStr = await getCloudValue('voters_list');
             if (listStr === null) {
+                const local = localStorage.getItem('voters');
+                if (local !== null && JSON.parse(local).length > 0) {
+                    const localVoters = JSON.parse(local);
+                    try {
+                        const ids = [];
+                        for (const voter of localVoters) {
+                            ids.push(voter.id);
+                            await setCloudValue(`voter_${voter.id}`, serializeVoter(voter));
+                        }
+                        await setCloudValue('voters_list', ids.join(','));
+                    } catch(e) {}
+                    return localVoters;
+                }
                 try {
                     await setCloudValue('voters_list', '');
                 } catch(e) {}
@@ -216,6 +229,18 @@ async function getDB(key, defaultValue) {
         } else if (key === 'candidates') {
             const listStr = await getCloudValue('candidates_list');
             if (listStr === null) {
+                const local = localStorage.getItem('candidates');
+                if (local !== null && JSON.parse(local).length > 0) {
+                    const localCands = JSON.parse(local);
+                    try {
+                        const ids = localCands.map(c => c.id);
+                        for (const c of localCands) {
+                            await setCloudValue(`candidate_${c.id}`, serializeCandidate(c));
+                        }
+                        await setCloudValue('candidates_list', ids.join(','));
+                    } catch(e) {}
+                    return localCands;
+                }
                 const ids = defaultValue.map(c => c.id);
                 try {
                     for (const c of defaultValue) {
@@ -240,6 +265,13 @@ async function getDB(key, defaultValue) {
         } else {
             const valStr = await getCloudValue(key);
             if (valStr === null) {
+                const local = localStorage.getItem(key);
+                if (local !== null) {
+                    try {
+                        await setCloudValue(key, local);
+                    } catch(e) {}
+                    return JSON.parse(local);
+                }
                 try {
                     await setCloudValue(key, JSON.stringify(defaultValue));
                 } catch(e) {}
