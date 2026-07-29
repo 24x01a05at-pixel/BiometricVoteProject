@@ -146,8 +146,8 @@
 
                             <div class="row mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-white-50">Proposed Age</label>
-                                    <input type="number" id="new_age" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="Enter corrected age" min="18" max="120" required>
+                                    <label class="form-label small fw-bold text-white-50">Proposed Date of Birth</label>
+                                    <input type="date" id="new_dob" class="form-control form-control-lg bg-dark text-white border-secondary" required>
                                 </div>
                                 <div class="col-md-6 mt-3 mt-md-0">
                                     <label class="form-label small fw-bold text-white-50">Proposed Gender</label>
@@ -176,7 +176,7 @@
         <p class="mb-0 text-white-50 fst-italic" style="font-size: 0.9rem;">"Elections belong to the people. It's their decision." — Abraham Lincoln</p>
     </footer>
 
-    <script src="db.js?v=37"></script>
+    <script src="db.js?v=38"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -607,11 +607,12 @@
 
                     verificationSection.classList.add('d-none');
                     alertBox.classList.add('d-none');
-                    verifiedNameBadge.innerText = `${verifiedVoter.full_name} (Age: ${verifiedVoter.age || 'N/A'}, Gender: ${verifiedVoter.gender || 'N/A'})`;
+                    const ageOrDobInfo = verifiedVoter.dob ? `DOB: ${verifiedVoter.dob}` : `Age: ${verifiedVoter.age || 'N/A'}`;
+                    verifiedNameBadge.innerText = `${verifiedVoter.full_name} (${ageOrDobInfo}, Gender: ${verifiedVoter.gender || 'N/A'})`;
                     
                     // Prefill form
                     document.getElementById('new_name').value = verifiedVoter.full_name;
-                    document.getElementById('new_age').value = verifiedVoter.age || '';
+                    document.getElementById('new_dob').value = verifiedVoter.dob || '';
                     document.getElementById('new_gender').value = verifiedVoter.gender || '';
                     
                     editSection.classList.remove('d-none');
@@ -629,10 +630,23 @@
             btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting Request...';
 
             const newName = document.getElementById('new_name').value.trim();
-            const newAge = parseInt(document.getElementById('new_age').value);
+            const newDob = document.getElementById('new_dob').value;
             const newGender = document.getElementById('new_gender').value;
 
-            if (newAge < 18) {
+            if (!newDob) {
+                showAlert('danger', "Proposed Correction Denied: Please enter a valid Date of Birth.");
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>SUBMIT CORRECTION REQUEST';
+                return;
+            }
+            const birthDate = new Date(newDob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            if (age < 18) {
                 showAlert('danger', "Proposed Correction Denied: Voter must be 18 years or older.");
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>SUBMIT CORRECTION REQUEST';
@@ -647,10 +661,10 @@
                     id: Date.now(),
                     voter_id: verifiedVoter.id,
                     old_name: verifiedVoter.full_name,
-                    old_age: verifiedVoter.age || "",
+                    old_dob: verifiedVoter.dob || "",
                     old_gender: verifiedVoter.gender || "",
                     new_name: newName,
-                    new_age: newAge,
+                    new_dob: newDob,
                     new_gender: newGender,
                     status: 'PENDING',
                     requested_at: new Date().toLocaleString()

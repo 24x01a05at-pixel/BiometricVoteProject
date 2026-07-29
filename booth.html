@@ -94,8 +94,8 @@
 
                         <div class="row mb-4 text-start">
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-white">Age</label>
-                                <input type="number" id="voter_age_input" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="e.g. 21" min="1" max="120" required>
+                                <label class="form-label small fw-bold text-white">Date of Birth</label>
+                                <input type="date" id="voter_dob_input" class="form-control form-control-lg bg-dark text-white border-secondary" required>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <label class="form-label small fw-bold text-white">Gender</label>
@@ -128,13 +128,13 @@
     </div>
 
     <!-- Client-Side Biometric Scanning Logic -->
-    <script src="db.js?v=37"></script>
+    <script src="db.js?v=38"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const alertBox = document.getElementById('alert-box');
         const nameInput = document.getElementById('voter_name_input');
-        const ageInput = document.getElementById('voter_age_input');
+        const dobInput = document.getElementById('voter_dob_input');
         const genderSelect = document.getElementById('voter_gender_input');
         const btnScan = document.getElementById('btn-scan');
         const closedAlert = document.getElementById('closed-alert');
@@ -534,15 +534,15 @@
 
         btnScan.addEventListener('click', async function() {
             const enteredName = nameInput.value.trim();
-            const enteredAge = ageInput.value.trim();
+            const enteredDob = dobInput.value;
             const enteredGender = genderSelect.value;
             
             if (!enteredName) {
                 showAlert('danger', "Please enter your registered full name.");
                 return;
             }
-            if (!enteredAge) {
-                showAlert('danger', "Please enter your registered age.");
+            if (!enteredDob) {
+                showAlert('danger', "Please enter your registered date of birth.");
                 return;
             }
             if (!enteredGender) {
@@ -583,14 +583,14 @@
             const freshVoters = await getDB('voters', []);
             const targetVoter = freshVoters.find(v => {
                 const nameMatch = v.full_name.toLowerCase() === enteredName.toLowerCase();
-                const ageMatch = !v.age || v.age.toString() === enteredAge;
+                const dobMatch = !v.dob || v.dob === enteredDob;
                 const genderMatch = !v.gender || v.gender === enteredGender;
-                return nameMatch && ageMatch && genderMatch;
+                return nameMatch && dobMatch && genderMatch;
             });
             
             setTimeout(() => {
                 if (!targetVoter) {
-                    showAlert('danger', "Biometric Unrecognized: Verification details (Name, Age, or Gender) do not match any registered voter.");
+                    showAlert('danger', "Biometric Unrecognized: Verification details (Name, DOB, or Gender) do not match any registered voter.");
                     resetScanButton();
                     return;
                 }

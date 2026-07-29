@@ -96,8 +96,8 @@
 
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Age</label>
-                                <input type="number" id="voter_age" class="form-control form-control-lg" placeholder="e.g. 21" min="1" max="120" required>
+                                <label class="form-label fw-semibold">Date of Birth</label>
+                                <input type="date" id="voter_dob" class="form-control form-control-lg" required>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <label class="form-label fw-semibold">Gender</label>
@@ -150,7 +150,7 @@
     </div>
 
     <!-- Client-Side Biometrics & Web Storage Script -->
-    <script src="db.js?v=37"></script>
+    <script src="db.js?v=38"></script>
     <script>
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
@@ -598,22 +598,32 @@
             }
         }
         document.getElementById('voter_name').addEventListener('input', resetStep);
-        document.getElementById('voter_age').addEventListener('input', resetStep);
+        document.getElementById('voter_dob').addEventListener('input', resetStep);
         document.getElementById('voter_gender').addEventListener('change', resetStep);
 
         regForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('voter_name').value.trim();
-            const ageVal = document.getElementById('voter_age').value.trim();
+            const dob = document.getElementById('voter_dob').value;
             const gender = document.getElementById('voter_gender').value;
             
             if (!name) {
                 showAlert('danger', "Please enter the voter name first.");
                 return;
             }
-            const age = parseInt(ageVal);
-            if (isNaN(age) || age < 18) {
+            if (!dob) {
+                showAlert('danger', "Please enter your date of birth.");
+                return;
+            }
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            if (age < 18) {
                 showAlert('danger', "Eligibility Denied: You must be 18 years or older to register as a voter.");
                 return;
             }
@@ -727,7 +737,7 @@
                 voters.push({
                     id: Date.now(),
                     full_name: name,
-                    age: age,
+                    dob: dob,
                     gender: gender,
                     has_voted: false,
                     capture_path: imageDataUrl,
@@ -744,7 +754,7 @@
 
                 showAlert('success', `Voter '${name}' successfully enrolled with secure biometric face encoding!`);
                 document.getElementById('voter_name').value = '';
-                document.getElementById('voter_age').value = '';
+                document.getElementById('voter_dob').value = '';
                 document.getElementById('voter_gender').selectedIndex = 0;
                 
                 // Reset state machine

@@ -164,23 +164,6 @@
                         </div>
                     </div>
 
-                    <!-- Profile Correction Requests Card -->
-                    <div id="correction-requests-card" class="card card-custom p-4 bg-white mt-4 d-none">
-                        <h4 class="fw-bold mb-3"><i class="bi bi-pencil-square me-2" style="color: #a855f7;"></i>Voter Profile Correction Requests</h4>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Original Details</th>
-                                        <th>Proposed Corrections</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="correction-requests-tbody">
-                                    <!-- Loaded dynamically -->
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
                 </div>
 
@@ -202,6 +185,25 @@
                                     </tr>
                                 </thead>
                                 <tbody id="voters-directory-tbody">
+                                    <!-- Loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Profile Correction Requests Card -->
+                    <div id="correction-requests-card" class="card card-custom p-4 bg-white mb-4 d-none">
+                        <h4 class="fw-bold mb-3"><i class="bi bi-pencil-square me-2" style="color: #a855f7;"></i>Voter Profile Correction Requests</h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Original Details</th>
+                                        <th>Proposed Corrections</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="correction-requests-tbody">
                                     <!-- Loaded dynamically -->
                                 </tbody>
                             </table>
@@ -260,7 +262,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=37"></script>
+    <script src="db.js?v=38"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -474,9 +476,9 @@
                     ? `<span class="badge bg-danger d-block mt-1" style="font-size: 0.75rem; width: fit-content;" title="Outdated 6x6 biometric format. Please delete and re-register.">⚠️ Outdated Biometrics</span>`
                     : '';
                     
-                const ageGenderHtml = (v.age && v.gender)
-                    ? `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">Age: ${v.age} | Gender: ${v.gender}</small>`
-                    : '';
+                const ageInfo = v.age ? ` (Age: ${v.age})` : '';
+                const dobInfo = v.dob ? `DOB: ${v.dob}${ageInfo}` : `Age: ${v.age || 'N/A'}`;
+                const ageGenderHtml = `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -512,11 +514,11 @@
                     tr.innerHTML = `
                         <td>
                             <div class="fw-bold">${r.old_name}</div>
-                            <small class="text-muted">Age: ${r.old_age} | Gen: ${r.old_gender}</small>
+                            <small class="text-muted">DOB: ${r.old_dob || r.old_age || 'N/A'} | Gen: ${r.old_gender || 'N/A'}</small>
                         </td>
                         <td>
                             <div class="fw-bold text-success">${r.new_name}</div>
-                            <small class="text-success">Age: ${r.new_age} | Gen: ${r.new_gender}</small>
+                            <small class="text-success">DOB: ${r.new_dob || r.new_age || 'N/A'} | Gen: ${r.new_gender || 'N/A'}</small>
                         </td>
                         <td>
                             <div class="d-flex gap-1">
@@ -627,8 +629,20 @@
                     const voter = votersList.find(v => v.id === req.voter_id);
                     if (voter) {
                         voter.full_name = req.new_name;
-                        voter.age = req.new_age;
                         voter.gender = req.new_gender;
+                        if (req.new_dob) {
+                            voter.dob = req.new_dob;
+                            const birthDate = new Date(req.new_dob);
+                            const today = new Date();
+                            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                calculatedAge--;
+                            }
+                            voter.age = calculatedAge;
+                        } else if (req.new_age) {
+                            voter.age = req.new_age;
+                        }
                         await setDB('voters', votersList);
                     }
                     await setDB('correction_requests', requests);
@@ -961,9 +975,9 @@
                             ? `<span class="badge bg-danger d-block mt-1" style="font-size: 0.75rem; width: fit-content;" title="Outdated 6x6 biometric format. Please delete and re-register.">⚠️ Outdated Biometrics</span>`
                             : '';
                             
-                        const ageGenderHtml = (v.age && v.gender)
-                            ? `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">Age: ${v.age} | Gender: ${v.gender}</small>`
-                            : '';
+                        const ageInfo = v.age ? ` (Age: ${v.age})` : '';
+                        const dobInfo = v.dob ? `DOB: ${v.dob}${ageInfo}` : `Age: ${v.age || 'N/A'}`;
+                        const ageGenderHtml = `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
 
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
@@ -1001,11 +1015,11 @@
                             tr.innerHTML = `
                                 <td>
                                     <div class="fw-bold">${r.old_name}</div>
-                                    <small class="text-muted">Age: ${r.old_age} | Gen: ${r.old_gender}</small>
+                                    <small class="text-muted">DOB: ${r.old_dob || r.old_age || 'N/A'} | Gen: ${r.old_gender || 'N/A'}</small>
                                 </td>
                                 <td>
                                     <div class="fw-bold text-success">${r.new_name}</div>
-                                    <small class="text-success">Age: ${r.new_age} | Gen: ${r.new_gender}</small>
+                                    <small class="text-success">DOB: ${r.new_dob || r.new_age || 'N/A'} | Gen: ${r.new_gender || 'N/A'}</small>
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">
