@@ -260,7 +260,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=36"></script>
+    <script src="db.js?v=37"></script>
     <script>
         async function init() {
             showSpinner("Loading cloud database...");
@@ -952,8 +952,8 @@
                 if (votersTbody) {
                     votersTbody.innerHTML = '';
                     voters.sort((a,b) => a.full_name.localeCompare(b.full_name)).forEach(v => {
-                        const photoHtml = v.photo_base64 
-                            ? `<img src="${v.photo_base64}" class="voter-thumb border" alt="Voter">` 
+                        const photoHtml = v.capture_path 
+                            ? `<img src="${v.capture_path}" class="voter-thumb border" alt="Voter">` 
                             : `<div class="voter-thumb-placeholder d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width: 40px; height: 40px; margin: 0 auto;"><i class="bi bi-person-fill text-secondary"></i></div>`;
                             
                         const isOutdated = !v.face_signature || v.face_signature.length !== 144;

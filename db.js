@@ -224,8 +224,31 @@ async function getDB(key, defaultValue) {
                     voters.push(deserializeVoter(voterStr));
                 }
             }
-            localStorage.setItem('voters', JSON.stringify(voters));
-            return voters;
+            
+            // Bidirectional voter cache merge
+            const local = localStorage.getItem('voters');
+            let mergedVoters = voters;
+            if (local !== null) {
+                const localVoters = JSON.parse(local);
+                const mergedMap = new Map();
+                localVoters.forEach(v => { if (v && v.id) mergedMap.set(v.id, v); });
+                voters.forEach(v => { if (v && v.id) mergedMap.set(v.id, v); });
+                mergedVoters = Array.from(mergedMap.values());
+                
+                if (mergedVoters.length > voters.length) {
+                    try {
+                        const newIds = [];
+                        for (const voter of mergedVoters) {
+                            newIds.push(voter.id);
+                            await setCloudValue(`voter_${voter.id}`, serializeVoter(voter));
+                        }
+                        await setCloudValue('voters_list', newIds.join(','));
+                    } catch(e) {}
+                }
+            }
+            
+            localStorage.setItem('voters', JSON.stringify(mergedVoters));
+            return mergedVoters;
         } else if (key === 'candidates') {
             const listStr = await getCloudValue('candidates_list');
             if (listStr === null) {
@@ -260,8 +283,30 @@ async function getDB(key, defaultValue) {
                     candidates.push(deserializeCandidate(candStr));
                 }
             }
-            localStorage.setItem('candidates', JSON.stringify(candidates));
-            return candidates;
+            
+            // Bidirectional candidates cache merge
+            const local = localStorage.getItem('candidates');
+            let mergedCands = candidates;
+            if (local !== null) {
+                const localCands = JSON.parse(local);
+                const mergedMap = new Map();
+                localCands.forEach(c => { if (c && c.id) mergedMap.set(c.id, c); });
+                candidates.forEach(c => { if (c && c.id) mergedMap.set(c.id, c); });
+                mergedCands = Array.from(mergedMap.values());
+                
+                if (mergedCands.length > candidates.length) {
+                    try {
+                        const newIds = mergedCands.map(c => c.id);
+                        for (const c of mergedCands) {
+                            await setCloudValue(`candidate_${c.id}`, serializeCandidate(c));
+                        }
+                        await setCloudValue('candidates_list', newIds.join(','));
+                    } catch(e) {}
+                }
+            }
+            
+            localStorage.setItem('candidates', JSON.stringify(mergedCands));
+            return mergedCands;
         } else {
             const valStr = await getCloudValue(key);
             if (valStr === null) {
@@ -278,8 +323,32 @@ async function getDB(key, defaultValue) {
                 localStorage.setItem(key, JSON.stringify(defaultValue));
                 return defaultValue;
             }
-            localStorage.setItem(key, valStr);
-            return JSON.parse(valStr);
+            
+            // Bidirectional generic array (e.g. correction_requests) cache merge
+            const local = localStorage.getItem(key);
+            let mergedVal = JSON.parse(valStr);
+            if (local !== null) {
+                try {
+                    const localArr = JSON.parse(local);
+                    const cloudArr = JSON.parse(valStr);
+                    if (Array.isArray(localArr) && Array.isArray(cloudArr)) {
+                        const mergedMap = new Map();
+                        localArr.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                        cloudArr.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                        const mergedArr = Array.from(mergedMap.values());
+                        
+                        if (mergedArr.length > cloudArr.length) {
+                            try {
+                                await setCloudValue(key, JSON.stringify(mergedArr));
+                            } catch(e) {}
+                        }
+                        mergedVal = mergedArr;
+                    }
+                } catch(e) {}
+            }
+            
+            localStorage.setItem(key, JSON.stringify(mergedVal));
+            return mergedVal;
         }
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
