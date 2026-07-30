@@ -1,5 +1,5 @@
 // Cloud Database Helper using jsonblob.com for shared database across devices
-const BLOB_ID = "019fb2b6-0ee6-7bdd-b5c0-e2d8fc17a77b";
+const BLOB_ID = "019fb416-1555-73f0-b1db-fa853a37ac2d";
 const BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
 
 // Safe Base64 Helper for URL-safe path values in IIS
@@ -217,8 +217,15 @@ let dbObjCached = null;
 let isInitialSyncDone = false;
 let initialSyncPromise = null;
 let saveDebounceTimeout = null;
+let lastSyncTime = 0;
 
 async function syncCloudDB() {
+    const now = Date.now();
+    // Throttle background syncs to once every 30 seconds unless it is the first sync of the session
+    if (now - lastSyncTime < 30000 && isInitialSyncDone) {
+        return;
+    }
+    
     if (initialSyncPromise) return initialSyncPromise;
     
     initialSyncPromise = (async () => {
@@ -231,6 +238,7 @@ async function syncCloudDB() {
             
             const dbObj = await response.json();
             dbObjCached = dbObj;
+            lastSyncTime = Date.now();
             
             const keys = ['voters', 'candidates', 'election_config', 'correction_requests'];
             let hasNewLocalData = false;
@@ -247,34 +255,57 @@ async function syncCloudDB() {
                             mergedVal = localData;
                             hasNewLocalData = true;
                         } else if (Array.isArray(localData) && Array.isArray(cloudVal)) {
-                            // Self-healing merge of arrays (voters, candidates, etc.)
+                            // Smart bidirectional sync with delete support
                             const mergedMap = new Map();
-                            localData.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                            
+                            // 1. Populate the map with items currently in the cloud (marked as synced)
                             cloudVal.forEach(item => {
                                 if (item && item.id) {
-                                    const localItem = mergedMap.get(item.id);
-                                    if (localItem) {
-                                        // Keep local candidate logo if cloud has placeholder
-                                        if (localItem.logo_path && localItem.logo_path.startsWith('data:image') && (!item.logo_path || item.logo_path === 'placeholder')) {
-                                            item.logo_path = localItem.logo_path;
-                                            hasNewLocalData = true;
-                                        }
-                                        // Keep local voter photo if cloud is missing
-                                        if (localItem.capture_path && localItem.capture_path.startsWith('data:image') && (!item.capture_path || item.capture_path === 'placeholder')) {
-                                            item.capture_path = localItem.capture_path;
-                                            hasNewLocalData = true;
-                                        }
-                                    }
+                                    item.synced = true;
                                     mergedMap.set(item.id, item);
                                 }
                             });
+                            
+                            // 2. Loop through local storage items
+                            localData.forEach(localItem => {
+                                if (localItem && localItem.id) {
+                                    const cloudItem = mergedMap.get(localItem.id);
+                                    if (cloudItem) {
+                                        // Item is present on both: preserve local base64 images if cloud is blank
+                                        let updated = false;
+                                        if (localItem.logo_path && localItem.logo_path.startsWith('data:image') && (!cloudItem.logo_path || cloudItem.logo_path === 'placeholder')) {
+                                            cloudItem.logo_path = localItem.logo_path;
+                                            updated = true;
+                                        }
+                                        if (localItem.capture_path && localItem.capture_path.startsWith('data:image') && (!cloudItem.capture_path || cloudItem.capture_path === 'placeholder')) {
+                                            cloudItem.capture_path = localItem.capture_path;
+                                            updated = true;
+                                        }
+                                        if (updated) {
+                                            hasNewLocalData = true;
+                                        }
+                                    } else {
+                                        // Item exists locally but is missing in the cloud
+                                        if (localItem.synced === false) {
+                                            // New registration created offline (never synced) -> upload it
+                                            localItem.synced = true;
+                                            mergedMap.set(localItem.id, localItem);
+                                            hasNewLocalData = true;
+                                        } else {
+                                            // Was already synced previously -> this means it was deleted on another device -> delete locally
+                                            // So we DO NOT add it back to the merged list.
+                                        }
+                                    }
+                                }
+                            });
+                            
                             const newMerged = Array.from(mergedMap.values());
                             if (newMerged.length > cloudVal.length) {
                                 hasNewLocalData = true;
                             }
                             mergedVal = newMerged;
                         } else if (typeof localData === 'object' && typeof cloudVal === 'object') {
-                            // Object merge (election_config)
+                            // Merge objects (election_config)
                             mergedVal = { ...localData, ...cloudVal };
                         }
                     } catch (e) {
@@ -288,7 +319,7 @@ async function syncCloudDB() {
                 }
             }
             
-            // Only write back if local data was missing in the cloud or self-healed
+            // Only write back to cloud if there is unsynced local data or photo heals
             if (hasNewLocalData) {
                 const putResponse = await fetch(BASE_URL, {
                     method: 'PUT',
@@ -307,6 +338,8 @@ async function syncCloudDB() {
             console.error("Database synchronization failed:", err);
             showOfflineWarningBadge(err);
             throw err;
+        } finally {
+            initialSyncPromise = null;
         }
     })();
     
@@ -329,6 +362,15 @@ async function getDB(key, defaultValue) {
 
 // Helper to write item to cloud DB with debouncing
 async function setDB(key, value) {
+    // Flag any newly created array items as unsynced (so they sync to cloud on next pass)
+    if (Array.isArray(value)) {
+        value.forEach(item => {
+            if (item && item.id && item.synced === undefined) {
+                item.synced = false;
+            }
+        });
+    }
+    
     localStorage.setItem(key, JSON.stringify(value));
     if (dbObjCached) {
         dbObjCached[key] = value;
@@ -347,8 +389,17 @@ async function setDB(key, value) {
             if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
             
             const dbObj = await response.json();
+            
+            // Mark items in the saved payload as synced (so they don't count as deletes elsewhere)
+            if (Array.isArray(value)) {
+                value.forEach(item => {
+                    if (item) item.synced = true;
+                });
+            }
+            
             dbObj[key] = value;
             dbObjCached = dbObj;
+            lastSyncTime = Date.now();
             
             const putResponse = await fetch(BASE_URL, {
                 method: 'PUT',
@@ -359,6 +410,9 @@ async function setDB(key, value) {
                 throw new Error("429 (Rate Limited - Too Many Requests)");
             }
             if (!putResponse.ok) throw new Error(`Write failed: ${putResponse.status}`);
+            
+            // Overwrite local copy with freshly synced database values to align flags
+            localStorage.setItem(key, JSON.stringify(value));
             
             hideOfflineWarningBadge();
         } catch (err) {
