@@ -263,7 +263,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=46"></script>
+    <script src="db.js?v=47"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -473,7 +473,7 @@
             // Render Registered Voters Directory alphabetically
             const votersTbody = document.getElementById('voters-directory-tbody');
             votersTbody.innerHTML = '';
-            const sortedVoters = [...voters].sort((a, b) => a.full_name.localeCompare(b.full_name));
+            const sortedVoters = [...voters].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
             sortedVoters.forEach(v => {
                 const photoHtml = v.capture_path 
                     ? `<img src="${v.capture_path}" class="voter-thumb" alt="Voter Photo">`
@@ -973,7 +973,7 @@
                 const votersTbody = document.getElementById('voters-directory-tbody');
                 if (votersTbody) {
                     votersTbody.innerHTML = '';
-                    voters.sort((a,b) => a.full_name.localeCompare(b.full_name)).forEach(v => {
+                    voters.sort((a,b) => (a.full_name || '').localeCompare(b.full_name || '')).forEach(v => {
                         const photoHtml = v.capture_path 
                             ? `<img src="${v.capture_path}" class="voter-thumb border" alt="Voter">` 
                             : `<div class="voter-thumb-placeholder d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width: 40px; height: 40px; margin: 0 auto;"><i class="bi bi-person-fill text-secondary"></i></div>`;

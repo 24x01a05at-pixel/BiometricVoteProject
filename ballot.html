@@ -50,7 +50,7 @@
     </div>
 
     <!-- Client-Side Ballot Voting Script -->
-    <script src="db.js?v=46"></script>
+    <script src="db.js?v=47"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -79,11 +79,11 @@
             approvedCandidates = candidates.filter(c => c.approved);
             
             // Put NOTA at the end
-            approvedCandidates.sort((a, b) => (a.name.toUpperCase() === 'NOTA') - (b.name.toUpperCase() === 'NOTA'));
+            approvedCandidates.sort((a, b) => (((a.name || '').toUpperCase() === 'NOTA') - ((b.name || '').toUpperCase() === 'NOTA')));
 
             ballotContainer.innerHTML = '';
             approvedCandidates.forEach(c => {
-                const isNota = (c.name.toUpperCase() === 'NOTA');
+                const isNota = ((c.name || '').toUpperCase() === 'NOTA');
                 const col = document.createElement('div');
                 col.className = 'col-12';
                 col.innerHTML = `
