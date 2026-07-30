@@ -318,3 +318,45 @@ h1, h2, h3, h4, h5, h6 {
         left: 0%;
     }
 }
+
+/* Table Transparency and Theme-Aware text colors */
+.table {
+    background: transparent !important;
+    --bs-table-bg: transparent !important;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-primary) !important;
+}
+
+.table th, .table td {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--card-border) !important;
+}
+
+.table tr {
+    background: transparent !important;
+}
+
+.light-theme .table {
+    --bs-table-hover-bg: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Theme-Aware Modal Content */
+.modal-content {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--card-border) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 15px 40px var(--shadow-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--card-border) !important;
+    background: transparent !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--card-border) !important;
+    background: transparent !important;
+}

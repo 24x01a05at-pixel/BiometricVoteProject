@@ -140,7 +140,7 @@
                 </div>
             </div>
 
-            <div class="row g-4">
+            <div class="row g-4 justify-content-center">
                 <!-- Left Side: Candidate list & Tie-Breaker block -->
                 <div class="col-lg-6">
                     <!-- Dynamic Tie-Breaker Panels -->
@@ -165,8 +165,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-
                     </div>
                 </div>
 
@@ -234,23 +232,23 @@
         <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                    <div class="modal-header bg-dark text-white">
+                    <div class="modal-header">
                         <h5 class="modal-title fw-bold"><i class="bi bi-key-fill text-warning me-2"></i>Change Admin Password</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-toggle="modal" data-bs-target="#changePasswordModal"></button>
                     </div>
                     <form id="change-pwd-form">
                         <div class="modal-body p-4">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Current Password</label>
-                                <input type="password" id="curr_pwd" class="form-control" required>
+                                <label class="form-label fw-semibold" style="color: var(--text-primary);">Current Password</label>
+                                <input type="password" id="curr_pwd" class="form-control form-control-premium" placeholder="Enter old password" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">New Password</label>
-                                <input type="password" id="new_pwd" class="form-control" minlength="4" required>
+                                <label class="form-label fw-semibold" style="color: var(--text-primary);">New Password</label>
+                                <input type="password" id="new_pwd" class="form-control form-control-premium" placeholder="Enter new password" minlength="4" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Confirm New Password</label>
-                                <input type="password" id="conf_pwd" class="form-control" minlength="4" required>
+                                <label class="form-label fw-semibold" style="color: var(--text-primary);">Confirm New Password</label>
+                                <input type="password" id="conf_pwd" class="form-control form-control-premium" placeholder="Confirm new password" minlength="4" required>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -265,7 +263,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=41"></script>
+    <script src="db.js?v=42"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {

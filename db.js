@@ -167,9 +167,6 @@ function serializeCandidate(cand) {
     const approvedVal = cand.approved ? "1" : "0";
     const tieVotedVal = cand.has_tie_voted ? "1" : "0";
     let logo = cand.logo_path || "placeholder";
-    if (logo.startsWith("data:image")) {
-        logo = "placeholder";
-    }
     return `${cand.id}|${cand.name}|${cand.party_name}|${logo}|${cand.votes || 0}|${cand.tie_votes || 0}|${approvedVal}|${tieVotedVal}`;
 }
 
@@ -219,162 +216,46 @@ function getCandidateLogoHtml(logoPath, className = "cand-thumb") {
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue) {
     try {
-        if (key === 'voters') {
-            const listStr = await getCloudValue('voters_list');
-            if (listStr === null) {
-                const local = localStorage.getItem('voters');
-                if (local !== null && JSON.parse(local).length > 0) {
-                    const localVoters = JSON.parse(local);
-                    try {
-                        const ids = [];
-                        for (const voter of localVoters) {
-                            ids.push(voter.id);
-                            await setCloudValue(`voter_${voter.id}`, serializeVoter(voter));
-                        }
-                        await setCloudValue('voters_list', ids.join(','));
-                    } catch(e) {}
-                    return localVoters;
+        const response = await fetch(BASE_URL);
+        if (!response.ok) throw new Error(`Cloud error ${response.status}`);
+        const dbObj = await response.json();
+        hideOfflineWarningBadge();
+        
+        const cloudVal = dbObj[key];
+        const local = localStorage.getItem(key);
+        
+        let mergedVal = cloudVal !== undefined && cloudVal !== null ? cloudVal : defaultValue;
+        
+        // Bidirectional merge to prevent data loss
+        if (local !== null) {
+            try {
+                const localData = JSON.parse(local);
+                if (Array.isArray(localData) && Array.isArray(cloudVal)) {
+                    // Merge arrays by ID (e.g. voters, candidates, correction_requests)
+                    const mergedMap = new Map();
+                    localData.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                    cloudVal.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                    mergedVal = Array.from(mergedMap.values());
+                } else if (typeof localData === 'object' && typeof cloudVal === 'object') {
+                    // Merge objects (e.g. election_config) by keeping the most updated state
+                    mergedVal = { ...localData, ...cloudVal };
                 }
-                try {
-                    await setCloudValue('voters_list', '');
-                } catch(e) {}
-                localStorage.setItem('voters', JSON.stringify([]));
-                return [];
+            } catch (e) {
+                console.warn("Error merging local data:", e);
             }
-            const ids = listStr.split(',').filter(Boolean);
-            const voters = [];
-            for (const id of ids) {
-                const voterStr = await getCloudValue(`voter_${id}`);
-                if (voterStr) {
-                    voters.push(deserializeVoter(voterStr));
-                }
-            }
-            
-            // Bidirectional voter cache merge
-            const local = localStorage.getItem('voters');
-            let mergedVoters = voters;
-            if (local !== null) {
-                const localVoters = JSON.parse(local);
-                const mergedMap = new Map();
-                localVoters.forEach(v => { if (v && v.id) mergedMap.set(v.id, v); });
-                voters.forEach(v => { if (v && v.id) mergedMap.set(v.id, v); });
-                mergedVoters = Array.from(mergedMap.values());
-                
-                if (mergedVoters.length > voters.length) {
-                    try {
-                        const newIds = [];
-                        for (const voter of mergedVoters) {
-                            newIds.push(voter.id);
-                            await setCloudValue(`voter_${voter.id}`, serializeVoter(voter));
-                        }
-                        await setCloudValue('voters_list', newIds.join(','));
-                    } catch(e) {}
-                }
-            }
-            
-            localStorage.setItem('voters', JSON.stringify(mergedVoters));
-            return mergedVoters;
-        } else if (key === 'candidates') {
-            const listStr = await getCloudValue('candidates_list');
-            if (listStr === null) {
-                const local = localStorage.getItem('candidates');
-                if (local !== null && JSON.parse(local).length > 0) {
-                    const localCands = JSON.parse(local);
-                    try {
-                        const ids = localCands.map(c => c.id);
-                        for (const c of localCands) {
-                            await setCloudValue(`candidate_${c.id}`, serializeCandidate(c));
-                        }
-                        await setCloudValue('candidates_list', ids.join(','));
-                    } catch(e) {}
-                    return localCands;
-                }
-                const ids = defaultValue.map(c => c.id);
-                try {
-                    for (const c of defaultValue) {
-                        const serialized = serializeCandidate(c);
-                        await setCloudValue(`candidate_${c.id}`, serialized);
-                    }
-                    await setCloudValue('candidates_list', ids.join(','));
-                } catch(e) {}
-                localStorage.setItem('candidates', JSON.stringify(defaultValue));
-                return defaultValue;
-            }
-            const ids = listStr.split(',').filter(Boolean);
-            const candidates = [];
-            for (const id of ids) {
-                const candStr = await getCloudValue(`candidate_${id}`);
-                if (candStr) {
-                    candidates.push(deserializeCandidate(candStr));
-                }
-            }
-            
-            // Bidirectional candidates cache merge
-            const local = localStorage.getItem('candidates');
-            let mergedCands = candidates;
-            if (local !== null) {
-                const localCands = JSON.parse(local);
-                const mergedMap = new Map();
-                localCands.forEach(c => { if (c && c.id) mergedMap.set(c.id, c); });
-                candidates.forEach(c => { if (c && c.id) mergedMap.set(c.id, c); });
-                mergedCands = Array.from(mergedMap.values());
-                
-                if (mergedCands.length > candidates.length) {
-                    try {
-                        const newIds = mergedCands.map(c => c.id);
-                        for (const c of mergedCands) {
-                            await setCloudValue(`candidate_${c.id}`, serializeCandidate(c));
-                        }
-                        await setCloudValue('candidates_list', newIds.join(','));
-                    } catch(e) {}
-                }
-            }
-            
-            localStorage.setItem('candidates', JSON.stringify(mergedCands));
-            return mergedCands;
-        } else {
-            const valStr = await getCloudValue(key);
-            if (valStr === null) {
-                const local = localStorage.getItem(key);
-                if (local !== null) {
-                    try {
-                        await setCloudValue(key, local);
-                    } catch(e) {}
-                    return JSON.parse(local);
-                }
-                try {
-                    await setCloudValue(key, JSON.stringify(defaultValue));
-                } catch(e) {}
-                localStorage.setItem(key, JSON.stringify(defaultValue));
-                return defaultValue;
-            }
-            
-            // Bidirectional generic array (e.g. correction_requests) cache merge
-            const local = localStorage.getItem(key);
-            let mergedVal = JSON.parse(valStr);
-            if (local !== null) {
-                try {
-                    const localArr = JSON.parse(local);
-                    const cloudArr = JSON.parse(valStr);
-                    if (Array.isArray(localArr) && Array.isArray(cloudArr)) {
-                        const mergedMap = new Map();
-                        localArr.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
-                        cloudArr.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
-                        const mergedArr = Array.from(mergedMap.values());
-                        
-                        if (mergedArr.length > cloudArr.length) {
-                            try {
-                                await setCloudValue(key, JSON.stringify(mergedArr));
-                            } catch(e) {}
-                        }
-                        mergedVal = mergedArr;
-                    }
-                } catch(e) {}
-            }
-            
-            localStorage.setItem(key, JSON.stringify(mergedVal));
-            return mergedVal;
         }
+        
+        // Save back to local storage and update cloud in background
+        localStorage.setItem(key, JSON.stringify(mergedVal));
+        
+        dbObj[key] = mergedVal;
+        await fetch(BASE_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dbObj)
+        });
+        
+        return mergedVal;
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
         showOfflineWarningBadge();
@@ -387,25 +268,19 @@ async function getDB(key, defaultValue) {
 async function setDB(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     try {
-        if (key === 'voters') {
-            const ids = [];
-            for (const voter of value) {
-                ids.push(voter.id);
-                const serialized = serializeVoter(voter);
-                await setCloudValue(`voter_${voter.id}`, serialized);
-            }
-            await setCloudValue('voters_list', ids.join(','));
-        } else if (key === 'candidates') {
-            const ids = [];
-            for (const cand of value) {
-                ids.push(cand.id);
-                const serialized = serializeCandidate(cand);
-                await setCloudValue(`candidate_${cand.id}`, serialized);
-            }
-            await setCloudValue('candidates_list', ids.join(','));
-        } else {
-            await setCloudValue(key, JSON.stringify(value));
-        }
+        const response = await fetch(BASE_URL);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const dbObj = await response.json();
+        
+        dbObj[key] = value;
+        
+        const putResponse = await fetch(BASE_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dbObj)
+        });
+        if (!putResponse.ok) throw new Error(`Write failed: ${putResponse.status}`);
+        hideOfflineWarningBadge();
     } catch (err) {
         console.error(`Failed to write key "${key}" to cloud DB:`, err);
         showOfflineWarningBadge();
