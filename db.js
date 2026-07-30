@@ -213,78 +213,159 @@ function getCandidateLogoHtml(logoPath, className = "cand-thumb") {
     `;
 }
 
+let dbObjCached = null;
+let isInitialSyncDone = false;
+let initialSyncPromise = null;
+let saveDebounceTimeout = null;
+
+async function syncCloudDB() {
+    if (initialSyncPromise) return initialSyncPromise;
+    
+    initialSyncPromise = (async () => {
+        try {
+            const response = await fetch(BASE_URL);
+            if (response.status === 429) {
+                throw new Error("429 (Rate Limited - Too Many Requests)");
+            }
+            if (!response.ok) throw new Error(`${response.status}`);
+            
+            const dbObj = await response.json();
+            dbObjCached = dbObj;
+            
+            const keys = ['voters', 'candidates', 'election_config', 'correction_requests'];
+            let hasNewLocalData = false;
+            
+            for (const key of keys) {
+                const cloudVal = dbObj[key];
+                const local = localStorage.getItem(key);
+                let mergedVal = cloudVal !== undefined && cloudVal !== null ? cloudVal : null;
+                
+                if (local !== null) {
+                    try {
+                        const localData = JSON.parse(local);
+                        if (mergedVal === null) {
+                            mergedVal = localData;
+                            hasNewLocalData = true;
+                        } else if (Array.isArray(localData) && Array.isArray(cloudVal)) {
+                            // Self-healing merge of arrays (voters, candidates, etc.)
+                            const mergedMap = new Map();
+                            localData.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+                            cloudVal.forEach(item => {
+                                if (item && item.id) {
+                                    const localItem = mergedMap.get(item.id);
+                                    if (localItem) {
+                                        // Keep local candidate logo if cloud has placeholder
+                                        if (localItem.logo_path && localItem.logo_path.startsWith('data:image') && (!item.logo_path || item.logo_path === 'placeholder')) {
+                                            item.logo_path = localItem.logo_path;
+                                            hasNewLocalData = true;
+                                        }
+                                        // Keep local voter photo if cloud is missing
+                                        if (localItem.capture_path && localItem.capture_path.startsWith('data:image') && (!item.capture_path || item.capture_path === 'placeholder')) {
+                                            item.capture_path = localItem.capture_path;
+                                            hasNewLocalData = true;
+                                        }
+                                    }
+                                    mergedMap.set(item.id, item);
+                                }
+                            });
+                            const newMerged = Array.from(mergedMap.values());
+                            if (newMerged.length > cloudVal.length) {
+                                hasNewLocalData = true;
+                            }
+                            mergedVal = newMerged;
+                        } else if (typeof localData === 'object' && typeof cloudVal === 'object') {
+                            // Object merge (election_config)
+                            mergedVal = { ...localData, ...cloudVal };
+                        }
+                    } catch (e) {
+                        console.warn("Merge error for", key, e);
+                    }
+                }
+                
+                if (mergedVal !== null) {
+                    localStorage.setItem(key, JSON.stringify(mergedVal));
+                    dbObj[key] = mergedVal;
+                }
+            }
+            
+            // Only write back if local data was missing in the cloud or self-healed
+            if (hasNewLocalData) {
+                const putResponse = await fetch(BASE_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dbObj)
+                });
+                if (putResponse.status === 429) {
+                    throw new Error("429 (Rate Limited - Too Many Requests)");
+                }
+                if (!putResponse.ok) throw new Error(`Write failed: ${putResponse.status}`);
+            }
+            
+            hideOfflineWarningBadge();
+            isInitialSyncDone = true;
+        } catch (err) {
+            console.error("Database synchronization failed:", err);
+            showOfflineWarningBadge(err);
+            throw err;
+        }
+    })();
+    
+    return initialSyncPromise;
+}
+
+// Trigger initial load immediately on script import
+syncCloudDB().catch(e => console.warn("Background sync failed:", e));
+
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue) {
     try {
-        const response = await fetch(BASE_URL);
-        if (!response.ok) throw new Error(`Cloud error ${response.status}`);
-        const dbObj = await response.json();
-        hideOfflineWarningBadge();
-        
-        const cloudVal = dbObj[key];
-        const local = localStorage.getItem(key);
-        
-        let mergedVal = cloudVal !== undefined && cloudVal !== null ? cloudVal : defaultValue;
-        
-        // Bidirectional merge to prevent data loss
-        if (local !== null) {
-            try {
-                const localData = JSON.parse(local);
-                if (Array.isArray(localData) && Array.isArray(cloudVal)) {
-                    // Merge arrays by ID (e.g. voters, candidates, correction_requests)
-                    const mergedMap = new Map();
-                    localData.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
-                    cloudVal.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
-                    mergedVal = Array.from(mergedMap.values());
-                } else if (typeof localData === 'object' && typeof cloudVal === 'object') {
-                    // Merge objects (e.g. election_config) by keeping the most updated state
-                    mergedVal = { ...localData, ...cloudVal };
-                }
-            } catch (e) {
-                console.warn("Error merging local data:", e);
-            }
-        }
-        
-        // Save back to local storage and update cloud in background
-        localStorage.setItem(key, JSON.stringify(mergedVal));
-        
-        dbObj[key] = mergedVal;
-        await fetch(BASE_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dbObj)
-        });
-        
-        return mergedVal;
-    } catch (err) {
-        console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
-        showOfflineWarningBadge(err);
-        const local = localStorage.getItem(key);
-        return local ? JSON.parse(local) : defaultValue;
+        await syncCloudDB();
+    } catch (e) {
+        console.warn(`getDB: Sync failed for key "${key}", reading from local cache:`, e.message);
     }
+    const local = localStorage.getItem(key);
+    return local ? JSON.parse(local) : defaultValue;
 }
 
-// Helper to write item to cloud DB
+// Helper to write item to cloud DB with debouncing
 async function setDB(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
-    try {
-        const response = await fetch(BASE_URL);
-        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-        const dbObj = await response.json();
-        
-        dbObj[key] = value;
-        
-        const putResponse = await fetch(BASE_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dbObj)
-        });
-        if (!putResponse.ok) throw new Error(`Write failed: ${putResponse.status}`);
-        hideOfflineWarningBadge();
-    } catch (err) {
-        console.error(`Failed to write key "${key}" to cloud DB:`, err);
-        showOfflineWarningBadge(err);
+    if (dbObjCached) {
+        dbObjCached[key] = value;
     }
+    
+    if (saveDebounceTimeout) {
+        clearTimeout(saveDebounceTimeout);
+    }
+    
+    saveDebounceTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(BASE_URL);
+            if (response.status === 429) {
+                throw new Error("429 (Rate Limited - Too Many Requests)");
+            }
+            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+            
+            const dbObj = await response.json();
+            dbObj[key] = value;
+            dbObjCached = dbObj;
+            
+            const putResponse = await fetch(BASE_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dbObj)
+            });
+            if (putResponse.status === 429) {
+                throw new Error("429 (Rate Limited - Too Many Requests)");
+            }
+            if (!putResponse.ok) throw new Error(`Write failed: ${putResponse.status}`);
+            
+            hideOfflineWarningBadge();
+        } catch (err) {
+            console.error(`Failed to write key "${key}" to cloud DB:`, err);
+            showOfflineWarningBadge(err);
+        }
+    }, 1500);
 }
 
 function showOfflineWarningBadge(err) {
