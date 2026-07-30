@@ -219,10 +219,10 @@ let initialSyncPromise = null;
 let saveDebounceTimeout = null;
 let lastSyncTime = 0;
 
-async function syncCloudDB() {
+async function syncCloudDB(force = false) {
     const now = Date.now();
-    // Throttle background syncs to once every 60 seconds unless it is the first sync of the session
-    if (now - lastSyncTime < 60000 && isInitialSyncDone) {
+    // Throttle background syncs to once every 60 seconds unless forced or it is the first sync
+    if (!force && now - lastSyncTime < 60000 && isInitialSyncDone) {
         return;
     }
     
@@ -350,9 +350,9 @@ async function syncCloudDB() {
 syncCloudDB().catch(e => console.warn("Background sync failed:", e));
 
 // Helper to get item from cloud DB
-async function getDB(key, defaultValue) {
+async function getDB(key, defaultValue, force = false) {
     try {
-        await syncCloudDB();
+        await syncCloudDB(force);
     } catch (e) {
         console.warn(`getDB: Sync failed for key "${key}", reading from local cache:`, e.message);
     }
