@@ -1,6 +1,6 @@
 // Cloud Database Helper using jsonblob.com via corsproxy.io to bypass IP-based rate limiting
 const BLOB_ID = "019fb416-1555-73f0-b1db-fa853a37ac2d";
-const BASE_URL = "https://corsproxy.io/?" + encodeURIComponent(`https://jsonblob.com/api/jsonBlob/${BLOB_ID}`);
+const BASE_URL = "https://corsproxy.io/?url=" + encodeURIComponent(`https://jsonblob.com/api/jsonBlob/${BLOB_ID}`);
 
 // Safe Base64 Helper for URL-safe path values in IIS
 function encodeSafeBase64(str) {
