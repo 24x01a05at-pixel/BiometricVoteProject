@@ -24,8 +24,18 @@ async function getCloudValue(key) {
     if (!response.ok) throw new Error(`Cloud error ${response.status}`);
     const dbObj = await response.json();
     hideOfflineWarningBadge();
-    if (!dbObj || !dbObj[key]) return null;
-    return decodeSafeBase64(dbObj[key]);
+    if (!dbObj || dbObj[key] === undefined || dbObj[key] === null) return null;
+    
+    const val = dbObj[key];
+    if (typeof val === 'string') {
+        try {
+            return decodeSafeBase64(val);
+        } catch (e) {
+            return val;
+        }
+    } else {
+        return JSON.stringify(val);
+    }
 }
 
 async function setCloudValue(key, valueStr) {
@@ -36,8 +46,12 @@ async function setCloudValue(key, valueStr) {
     }
     const dbObj = await getResponse.json();
     
-    // 2. Encode and update the key
-    dbObj[key] = encodeSafeBase64(valueStr);
+    // 2. Safely store as object if it is valid JSON, otherwise store as base64 string
+    try {
+        dbObj[key] = JSON.parse(valueStr);
+    } catch (e) {
+        dbObj[key] = encodeSafeBase64(valueStr);
+    }
     
     // 3. PUT the updated database object back to jsonblob
     const putResponse = await fetch(BASE_URL, {
