@@ -258,7 +258,7 @@ async function getDB(key, defaultValue) {
         return mergedVal;
     } catch (err) {
         console.warn(`Failed to read key "${key}" from cloud DB. Using local cache.`, err);
-        showOfflineWarningBadge();
+        showOfflineWarningBadge(err);
         const local = localStorage.getItem(key);
         return local ? JSON.parse(local) : defaultValue;
     }
@@ -283,12 +283,13 @@ async function setDB(key, value) {
         hideOfflineWarningBadge();
     } catch (err) {
         console.error(`Failed to write key "${key}" to cloud DB:`, err);
-        showOfflineWarningBadge();
+        showOfflineWarningBadge(err);
     }
 }
 
-function showOfflineWarningBadge() {
+function showOfflineWarningBadge(err) {
     let badge = document.getElementById('cloud-offline-badge');
+    const errMsg = err ? `: ${err.message || err}` : '';
     if (!badge) {
         badge = document.createElement('div');
         badge.id = 'cloud-offline-badge';
@@ -309,8 +310,10 @@ function showOfflineWarningBadge() {
             align-items: center;
             gap: 6px;
         `;
-        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)`;
+        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}`;
         document.body.appendChild(badge);
+    } else {
+        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}`;
     }
 }
 
