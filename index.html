@@ -7,11 +7,34 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>National Biometric Voting Portal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#030712',
+                        cardBg: 'rgba(17, 24, 39, 0.55)',
+                        cardBorder: 'rgba(255, 255, 255, 0.08)',
+                        accentBlue: '#3b82f6',
+                        accentCyan: '#06b6d4',
+                        accentEmerald: '#10b981',
+                        accentPurple: '#a855f7'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        poppins: ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="styles.css?v=38">
+    <link rel="stylesheet" href="styles.css?v=40">
     <style>
-        /* Specific page additions */
         #hero-canvas {
             position: absolute;
             top: 0;
@@ -21,46 +44,39 @@
             pointer-events: none;
             z-index: 1;
         }
-        .hero-section {
-            position: relative;
-            z-index: 2;
-            padding: 4rem 1rem 3rem 1rem;
+        .bento-card {
+            background: rgba(17, 24, 39, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .trust-badge {
-            background: rgba(34, 211, 238, 0.12);
-            border: 1px solid rgba(34, 211, 238, 0.25);
-            padding: 0.4rem 1rem;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
+        .bento-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
         }
-        .icon-lg-shield {
-            font-size: 4rem;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 4px 15px var(--accent-glow));
+        .bento-card-purple:hover {
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.15);
         }
     </style>
 </head>
-<body class="d-flex flex-column min-h-100">
+<body class="bg-darkBg text-slate-100 font-sans min-h-screen flex flex-column justify-between selection:bg-blue-500 selection:text-white">
 
     <!-- Top Navigation Navbar -->
-    <nav class="glass-nav sticky-top py-3 z-3">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-shield-check text-primary fs-3"></i>
-                <span class="fw-bold tracking-wider fs-5">BIOMETRIC VOTE SYSTEM</span>
+    <nav class="glass-nav sticky top-0 py-4 z-50">
+        <div class="container mx-auto px-6 flex justify-between items-center">
+            <div class="flex items-center gap-2.5">
+                <i class="bi bi-shield-check text-blue-500 text-2xl"></i>
+                <span class="font-poppins font-bold tracking-wider text-lg">BIOMETRIC VOTE SYSTEM</span>
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="trust-badge text-cyan d-none d-md-inline-block">
-                    <i class="bi bi-patch-check-fill me-1"></i> SECURE • TRANSPARENT • FAIR
+            <div class="flex items-center gap-4">
+                <div class="text-xs font-semibold px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 tracking-wider hidden md:inline-block">
+                    <i class="bi bi-patch-check-fill mr-1"></i> SECURE • TRANSPARENT • FAIR
                 </div>
                 <!-- Theme Toggle -->
-                <button class="theme-toggle-btn" id="theme-toggle" title="Toggle Light/Dark Theme">
+                <button class="theme-toggle-btn w-10 h-10 rounded-full flex items-center justify-center border border-white/5 bg-white/5 text-slate-300 hover:text-white hover:border-blue-500/40 hover:scale-105 transition-all" id="theme-toggle">
                     <i class="bi bi-moon-fill" id="theme-icon"></i>
                 </button>
             </div>
@@ -68,232 +84,211 @@
     </nav>
 
     <!-- Canvas for particles -->
-    <div class="position-relative overflow-hidden w-100" style="background: rgba(0,0,0,0.1);">
+    <div class="relative overflow-hidden w-full border-b border-white/5 bg-black/10">
         <canvas id="hero-canvas"></canvas>
         
         <!-- Interactive Hero Section -->
-        <div class="container hero-section text-center">
-            <div class="floating-icon mb-4">
-                <i class="bi bi-shield-lock-fill icon-lg-shield"></i>
+        <div class="container mx-auto px-6 relative z-10 text-center py-16">
+            <div class="floating-icon inline-block mb-5">
+                <i class="bi bi-shield-lock-fill text-5xl md:text-6xl text-blue-500 drop-shadow-[0_4px_15px_rgba(59,130,246,0.3)]"></i>
             </div>
-            <h1 class="display-4 fw-extrabold mb-3"><span class="gradient-text">Secure Biometric Voting</span></h1>
-            <p class="lead text-secondary max-w-600 mx-auto mb-4">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-poppins font-black mb-4 tracking-tight leading-tight">
+                <span class="bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">Secure Biometric Voting</span>
+            </h1>
+            <p class="text-slate-400 text-sm md:text-base max-w-2xl mx-auto mb-6">
                 A highly secure, decentralized, and live-authenticated voting ledger utilizing real-time face signature validation and anti-spoof checks.
             </p>
             
             <!-- Live Election Status -->
-            <div class="mb-4">
-                <span id="state-badge" class="badge bg-secondary badge-status py-2 px-3 align-items-center gap-2">
-                    <span class="pulse-dot me-2"></span>Loading status...
+            <div class="mb-6">
+                <span id="state-badge" class="inline-flex items-center gap-2 bg-slate-800/80 border border-white/10 px-4 py-2 rounded-full text-xs font-semibold text-slate-300">
+                    <span class="pulse-dot"></span>Loading status...
                 </span>
-                <div class="mt-3 text-warning fs-5 fw-bold d-none" id="timer-box">
-                    <i class="bi bi-stopwatch me-1"></i>Time Remaining: <span id="timer-countdown"></span>
+                <div class="mt-3 text-amber-400 text-base font-bold hidden" id="timer-box">
+                    <i class="bi bi-stopwatch mr-1"></i>Time Remaining: <span id="timer-countdown"></span>
                 </div>
             </div>
 
             <!-- Rotating quotes slider -->
-            <div class="glass-card max-w-600 mx-auto p-4 mb-5 quote-slider position-relative" style="max-width: 650px;">
-                <i class="bi bi-quote position-absolute text-muted opacity-10 fs-1" style="top: 10px; left: 20px;"></i>
-                <div id="quote-wrapper" class="w-100">
+            <div class="bento-card max-w-2xl mx-auto p-5 rounded-2xl relative">
+                <i class="bi bi-quote absolute text-slate-700 opacity-20 text-4xl top-2 left-4"></i>
+                <div id="quote-wrapper" class="w-full">
                     <!-- Quote loaded dynamically -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Navigation Tiles -->
-    <div class="container my-5">
-        <div class="row g-4 justify-content-center">
+    <!-- Bento Grid Section -->
+    <div class="container mx-auto px-6 py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- Voter Registration -->
-            <div class="col-md-6 col-lg-4">
-                <a href="voter_reg.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-primary bg-opacity-15 text-primary">
-                            <i class="bi bi-person-bounding-box"></i>
-                        </div>
-                        <h4 class="fw-bold mb-2">Voter Enrollment</h4>
-                        <p class="text-secondary small mb-4">Register your secure 3D face biometric encoding profile. Prevents duplicate face registrations.</p>
-                        <span class="text-primary fw-semibold small">Register Face <i class="bi bi-arrow-right ms-1"></i></span>
+            <!-- Left Side: Public Access Bento (8 cols on large) -->
+            <div class="lg:col-span-8 space-y-6">
+                <h3 class="font-poppins font-bold text-xl text-slate-300 flex items-center gap-2">
+                    <i class="bi bi-globe2 text-blue-500"></i> Public Voting Services
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    
+                    <!-- High Prominence Call to Action: Voting Booth (Span 12 on mobile, 12 on md) -->
+                    <div class="md:col-span-12">
+                        <a href="booth.html" class="block group">
+                            <div class="bento-card p-6 md:p-8 rounded-3xl relative overflow-hidden bg-gradient-to-r from-emerald-500/10 via-blue-500/5 to-transparent border-emerald-500/20 hover:border-emerald-500/40">
+                                <div class="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-300">
+                                    <i class="bi bi-camera-video text-7xl text-emerald-400"></i>
+                                </div>
+                                <div class="relative z-10 text-left">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 mb-4 border border-emerald-500/30">
+                                        <i class="bi bi-lightning-fill"></i> PRIMARY ACTION
+                                    </span>
+                                    <h3 class="text-2xl md:text-3xl font-poppins font-bold mb-3 text-slate-100 group-hover:text-emerald-400 transition-colors">Voting Booth</h3>
+                                    <p class="text-slate-400 text-sm md:text-base max-w-xl mb-6">
+                                        Verify your biometric identity and access the secure ballot. Requires live facial scan matching to grant entry.
+                                    </p>
+                                    <div class="inline-flex items-center gap-2 text-emerald-400 font-semibold group-hover:translate-x-1.5 transition-transform">
+                                        Enter Voting Booth <i class="bi bi-arrow-right"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                </a>
-            </div>
 
-            <!-- Candidate Nomination -->
-            <div class="col-md-6 col-lg-4">
-                <a href="candidate_reg.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-warning bg-opacity-15 text-warning">
-                            <i class="bi bi-person-badge"></i>
-                        </div>
-                        <h4 class="fw-bold mb-2">Nominate Candidate</h4>
-                        <p class="text-secondary small mb-4">Register candidates and submit political party logos for Election Commission validation.</p>
-                        <span class="text-warning fw-semibold small">Submit Nomination <i class="bi bi-arrow-right ms-1"></i></span>
+                    <!-- Voter Enrollment (Span 6 on md) -->
+                    <div class="md:col-span-6">
+                        <a href="voter_reg.html" class="block group">
+                            <div class="bento-card p-6 rounded-2xl h-full flex flex-col justify-between">
+                                <div class="text-left">
+                                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xl mb-4">
+                                        <i class="bi bi-person-bounding-box"></i>
+                                    </div>
+                                    <h4 class="text-lg font-poppins font-bold mb-2 group-hover:text-blue-400 transition-colors">Voter Enrollment</h4>
+                                    <p class="text-slate-400 text-xs mb-6">
+                                        Enroll your secure face biometric details. Capture straight, left, and right profiles to register your credential.
+                                    </p>
+                                </div>
+                                <div class="text-left inline-flex items-center gap-1.5 text-xs text-blue-400 font-semibold group-hover:translate-x-1 transition-transform mt-auto">
+                                    Register Profile <i class="bi bi-arrow-right"></i>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                </a>
-            </div>
 
-            <!-- Voting Booth -->
-            <div class="col-md-6 col-lg-4">
-                <a href="booth.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-success bg-opacity-15 text-success">
-                            <i class="bi bi-camera-video"></i>
-                        </div>
-                        <h4 class="fw-bold mb-2">Voting Booth</h4>
-                        <p class="text-secondary small mb-4">Verify your registered details and scan face signature to enter the secure ballot room.</p>
-                        <span class="text-success fw-semibold small">Cast Your Vote <i class="bi bi-arrow-right ms-1"></i></span>
+                    <!-- Official Results (Span 6 on md) -->
+                    <div class="md:col-span-6">
+                        <a href="results.html" class="block group">
+                            <div class="bento-card p-6 rounded-2xl h-full flex flex-col justify-between">
+                                <div class="text-left">
+                                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-4">
+                                        <i class="bi bi-bar-chart-line-fill"></i>
+                                    </div>
+                                    <h4 class="text-lg font-poppins font-bold mb-2 group-hover:text-cyan-400 transition-colors">Official Results</h4>
+                                    <p class="text-slate-400 text-xs mb-6">
+                                        View real-time voting tallies, tie-breaker outcomes, and winner certificates. Locked until voting closes.
+                                    </p>
+                                </div>
+                                <div class="text-left inline-flex items-center gap-1.5 text-xs text-cyan-400 font-semibold group-hover:translate-x-1 transition-transform mt-auto">
+                                    View Tally <i class="bi bi-arrow-right"></i>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                </a>
+                </div>
             </div>
-
-            <!-- Results -->
-            <div class="col-md-6 col-lg-4">
-                <a href="results.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-info bg-opacity-15 text-info">
-                            <i class="bi bi-bar-chart-line-fill"></i>
+            
+            <!-- Right Side: Administrative / Restricted Tools (4 cols on large) -->
+            <div class="lg:col-span-4 space-y-6">
+                <h3 class="font-poppins font-bold text-xl text-slate-300 flex items-center gap-2">
+                    <i class="bi bi-shield-lock text-purple-500"></i> Administrative Section
+                </h3>
+                
+                <div class="space-y-4">
+                    
+                    <!-- Admin Dashboard Card -->
+                    <a href="admin.html" class="block group">
+                        <div class="bento-card bento-card-purple p-5 rounded-2xl border-purple-500/10 bg-gradient-to-br from-purple-500/5 to-transparent hover:border-purple-500/30">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-lg flex-shrink-0">
+                                    <i class="bi bi-lock-fill"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-poppins font-bold text-slate-200 group-hover:text-purple-400 transition-colors">Admin Dashboard</h4>
+                                    <p class="text-slate-400 text-xs mt-1">Configure election timeline, set duration password, and manage nominee approvals.</p>
+                                </div>
+                            </div>
                         </div>
-                        <h4 class="fw-bold mb-2">Official Results</h4>
-                        <p class="text-secondary small mb-4">View secure, live voting tallies, tie-breaker results, and final certified winner badges.</p>
-                        <span class="text-info fw-semibold small">View Statistics <i class="bi bi-arrow-right ms-1"></i></span>
-                    </div>
-                </a>
-            </div>
+                    </a>
 
-            <!-- Voter Profile Correction -->
-            <div class="col-md-6 col-lg-4">
-                <a href="correction.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-opacity-15" style="background-color: rgba(168, 85, 247, 0.15); color: #a855f7;">
-                            <i class="bi bi-pencil-square"></i>
+                    <!-- Candidate Nomination Card -->
+                    <a href="candidate_reg.html" class="block group">
+                        <div class="bento-card bento-card-purple p-5 rounded-2xl border-purple-500/10 bg-gradient-to-br from-purple-500/5 to-transparent hover:border-purple-500/30">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-lg flex-shrink-0">
+                                    <i class="bi bi-person-badge-fill"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-poppins font-bold text-slate-200 group-hover:text-purple-400 transition-colors">Nominate Candidate</h4>
+                                    <p class="text-slate-400 text-xs mt-1">Submit political nominee applications and upload party symbol images for approval.</p>
+                                </div>
+                            </div>
                         </div>
-                        <h4 class="fw-bold mb-2">Profile Correction</h4>
-                        <p class="text-secondary small mb-4">Correct registered name, Date of Birth, or gender errors under biometric verification verification.</p>
-                        <span class="fw-semibold small" style="color: #a855f7;">Request Edit <i class="bi bi-arrow-right ms-1"></i></span>
-                    </div>
-                </a>
-            </div>
+                    </a>
 
-            <!-- Admin Center -->
-            <div class="col-md-6 col-lg-4">
-                <a href="admin.html" class="text-decoration-none">
-                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
-                        <div class="icon-box bg-danger bg-opacity-15 text-danger">
-                            <i class="bi bi-shield-lock-fill"></i>
+                    <!-- Profile Correction Card -->
+                    <a href="correction.html" class="block group">
+                        <div class="bento-card bento-card-purple p-5 rounded-2xl border-purple-500/10 bg-gradient-to-br from-purple-500/5 to-transparent hover:border-purple-500/30">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-lg flex-shrink-0">
+                                    <i class="bi bi-pencil-square"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-poppins font-bold text-slate-200 group-hover:text-purple-400 transition-colors">Voter Profile Correction</h4>
+                                    <p class="text-slate-400 text-xs mt-1">Request profile corrections for Name, Date of Birth, or Gender under biometric scan.</p>
+                                </div>
+                            </div>
                         </div>
-                        <h4 class="fw-bold mb-2">Admin Dashboard</h4>
-                        <p class="text-secondary small mb-4">Manage election timeline, review candidate approvals, and authorize voter corrections.</p>
-                        <span class="text-danger fw-semibold small">Configure Election <i class="bi bi-arrow-right ms-1"></i></span>
-                    </div>
-                </a>
+                    </a>
+                </div>
             </div>
         </div>
 
         <!-- Live Statistics Counters -->
-        <div class="row g-3 justify-content-center text-center mt-5">
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3">
-                    <div class="fs-3 fw-bold text-primary" id="voter-count">0</div>
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Registered Voters</small>
-                </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 text-center">
+            <div class="bento-card p-4 rounded-xl">
+                <div class="text-2xl md:text-3xl font-poppins font-bold text-blue-500" id="voter-count">0</div>
+                <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mt-1">Registered Voters</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3">
-                    <div class="fs-3 fw-bold text-success" id="voted-count">0</div>
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Votes Cast</small>
-                </div>
+            <div class="bento-card p-4 rounded-xl">
+                <div class="text-2xl md:text-3xl font-poppins font-bold text-emerald-500" id="voted-count">0</div>
+                <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mt-1">Votes Cast</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3">
-                    <div class="fs-3 fw-bold text-warning" id="pending-count">0</div>
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Pending Voters</small>
-                </div>
+            <div class="bento-card p-4 rounded-xl">
+                <div class="text-2xl md:text-3xl font-poppins font-bold text-amber-500" id="pending-count">0</div>
+                <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mt-1">Pending Voters</div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3">
-                    <div class="fs-3 fw-bold text-info" id="candidate-count">0</div>
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Ballot Options</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Timeline Showing Election Phases -->
-        <div class="mt-5 pt-4">
-            <h3 class="text-center fw-bold mb-5"><span class="gradient-text">Election Progression Phases</span></h3>
-            
-            <div class="timeline-container position-relative">
-                <div class="timeline-line"></div>
-                
-                <div class="timeline-item timeline-left">
-                    <div class="glass-card p-4">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-primary">Phase 1</span>
-                            <h5 class="fw-bold mb-0">Voter Enrollment</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">Citizens register online, capturing 3 different profiles (Straight, Left, Right) to build a unique biometric signature map.</p>
-                    </div>
-                </div>
-
-                <div class="timeline-item timeline-right">
-                    <div class="glass-card p-4">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-warning text-dark">Phase 2</span>
-                            <h5 class="fw-bold mb-0">Nominations Approval</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">Candidates file applications along with their party logos. Nominations are reviewed and approved by the Administrator.</p>
-                    </div>
-                </div>
-
-                <div class="timeline-item timeline-left">
-                    <div class="glass-card p-4">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-success">Phase 3</span>
-                            <h5 class="fw-bold mb-0">Biometric Verification</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">The Voting Booth opens. System checks liveness (rejects printouts/glare screens) and cross-checks face encodings.</p>
-                    </div>
-                </div>
-
-                <div class="timeline-item timeline-right">
-                    <div class="glass-card p-4">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-danger">Phase 4</span>
-                            <h5 class="fw-bold mb-0">Ballot Casting</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">Voters anonymously choose their candidates on a cryptographically isolated digital ballot, immediately updating the secure logs.</p>
-                    </div>
-                </div>
-
-                <div class="timeline-item timeline-left">
-                    <div class="glass-card p-4">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <span class="badge bg-info text-dark">Phase 5</span>
-                            <h5 class="fw-bold mb-0">Certified Tallies</h5>
-                        </div>
-                        <p class="text-secondary small mb-0">Voting period closes. Results are certified immediately, tie-breaker events resolved, and winner receipts generated.</p>
-                    </div>
-                </div>
+            <div class="bento-card p-4 rounded-xl">
+                <div class="text-2xl md:text-3xl font-poppins font-bold text-cyan-500" id="candidate-count">0</div>
+                <div class="text-slate-500 text-[10px] uppercase font-bold tracking-wider mt-1">Ballot Options</div>
             </div>
         </div>
     </div>
 
     <!-- Professional Footer -->
-    <footer class="mt-auto py-4 text-center" style="background: rgba(15, 23, 42, 0.4); border-top: 1px solid var(--card-border);">
-        <div class="container">
-            <div class="d-flex justify-content-center gap-3 mb-2 text-muted fs-6">
-                <span><i class="bi bi-shield-lock-fill me-1"></i> AES-256 Encryption</span>
-                <span>•</span>
-                <span><i class="bi bi-hdd-network-fill me-1"></i> Immutable Cloud Ledger</span>
-                <span>•</span>
-                <span><i class="bi bi-eye-slash-fill me-1"></i> Confidential Ballots</span>
+    <footer class="mt-auto py-6 text-center bg-slate-950/80 border-t border-white/5">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-wrap justify-content-center gap-x-6 gap-y-2 mb-3 text-slate-500 text-xs">
+                <span class="flex items-center gap-1"><i class="bi bi-shield-lock-fill text-blue-500"></i> AES-256 Encryption</span>
+                <span class="hidden md:inline">•</span>
+                <span class="flex items-center gap-1"><i class="bi bi-hdd-network-fill text-cyan-500"></i> Distributed Cloud Ledger</span>
+                <span class="hidden md:inline">•</span>
+                <span class="flex items-center gap-1"><i class="bi bi-eye-slash-fill text-purple-500"></i> Confidential Ballots</span>
             </div>
-            <p class="text-muted small mb-0">&copy; 2026 National Digital Election Commission. All rights reserved.</p>
+            <p class="text-slate-600 text-xs">&copy; 2026 National Digital Election Commission. All rights reserved.</p>
         </div>
     </footer>
 
     <!-- Init LocalStorage Data Script -->
-    <script src="db.js?v=38"></script>
+    <script src="db.js?v=40"></script>
     <script>
         // Theme toggler logic
         const themeBtn = document.getElementById('theme-toggle');
@@ -367,30 +362,30 @@
                         config.status = 'CLOSED';
                         config.end_time = null;
                         setDB('election_config', config);
-                        stateBadge.className = "badge bg-danger badge-status";
-                        stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
-                        document.getElementById('timer-box').classList.add('d-none');
+                        stateBadge.className = "inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-full text-xs font-semibold";
+                        stateBadge.innerHTML = '<i class="bi bi-lock-fill"></i> Election CLOSED - Results Released';
+                        document.getElementById('timer-box').classList.add('hidden');
                         return;
                     }
                     
                     const mins = Math.floor(diff / 60000);
                     const secs = Math.floor((diff % 60000) / 1000);
                     
-                    stateBadge.className = "badge bg-success badge-status";
-                    stateBadge.innerHTML = '<i class="bi bi-broadcast me-1"></i> Election ACTIVE - Voting Open';
+                    stateBadge.className = "inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full text-xs font-semibold";
+                    stateBadge.innerHTML = '<span class="pulse-dot"></span> Election ACTIVE - Voting Open';
                     
                     const timerBox = document.getElementById('timer-box');
-                    timerBox.classList.remove('d-none');
+                    timerBox.classList.remove('hidden');
                     document.getElementById('timer-countdown').innerText = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
                 }
                 tick();
                 setInterval(tick, 1000);
             } else if (config.status === 'CLOSED') {
-                stateBadge.className = "badge bg-danger badge-status";
-                stateBadge.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Election CLOSED - Results Released';
+                stateBadge.className = "inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-full text-xs font-semibold";
+                stateBadge.innerHTML = '<i class="bi bi-lock-fill"></i> Election CLOSED - Results Released';
             } else {
-                stateBadge.className = "badge bg-secondary badge-status";
-                stateBadge.innerHTML = '<i class="bi bi-clock me-1"></i> Election Not Started';
+                stateBadge.className = "inline-flex items-center gap-2 bg-slate-800/85 border border-white/10 text-slate-400 px-4 py-2 rounded-full text-xs font-semibold";
+                stateBadge.innerHTML = '<i class="bi bi-clock"></i> Election Not Started';
             }
         }
         init();
@@ -413,9 +408,9 @@
             const q = quotes[quoteIndex];
             quoteWrapper.innerHTML = `
                 <div class="quote-slide text-center">
-                    <h5 class="fw-semibold fst-italic px-3 mb-2">"${q.text}"</h5>
-                    <div class="d-flex align-items-center justify-content-center gap-2 text-muted small">
-                        <i class="bi ${q.icon} text-primary"></i>
+                    <h5 class="font-semibold italic px-3 mb-2 text-sm md:text-base">"${q.text}"</h5>
+                    <div class="flex items-center justify-center gap-2 text-slate-500 text-xs">
+                        <i class="bi ${q.icon} text-blue-500"></i>
                         <span>— ${q.author}</span>
                     </div>
                 </div>
@@ -446,7 +441,7 @@
                 this.size = Math.random() * 2 + 1;
                 this.speedX = Math.random() * 0.4 - 0.2;
                 this.speedY = Math.random() * 0.4 - 0.2;
-                this.color = Math.random() > 0.5 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(6, 182, 212, 0.25)';
+                this.color = Math.random() > 0.5 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(6, 182, 212, 0.2)';
             }
             update() {
                 this.x += this.speedX;
