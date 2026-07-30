@@ -9,19 +9,18 @@
     <title>Biometric Voter Enrollment</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { background: #f1f5f9; font-family: 'Outfit', sans-serif; }
         .webcam-container { 
             position: relative; 
             width: 100%; 
             max-width: 480px; 
             margin: 0 auto; 
-            border-radius: 20px; 
+            border-radius: 24px; 
             overflow: hidden; 
             background: #000; 
-            border: 4px solid #3b82f6;
-            box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
+            border: 3px solid var(--accent-blue);
+            box-shadow: 0 0 25px var(--accent-glow);
         }
         video { width: 100%; display: block; }
         .scan-overlay { 
@@ -30,10 +29,11 @@
             left: 15%; 
             width: 70%; 
             height: 80%; 
-            border: 2px dashed rgba(59, 130, 246, 0.8); 
+            border: 2px dashed var(--accent-blue); 
             border-radius: 50%; 
             pointer-events: none; 
             z-index: 5;
+            opacity: 0.8;
         }
         @keyframes scanline {
             0% { top: 0%; opacity: 0.8; }
@@ -44,35 +44,43 @@
             position: absolute;
             width: 100%;
             height: 4px;
-            background: linear-gradient(to bottom, transparent, #3b82f6, transparent);
-            box-shadow: 0 0 15px #3b82f6;
+            background: linear-gradient(to bottom, transparent, var(--accent-blue), transparent);
+            box-shadow: 0 0 15px var(--accent-blue);
             animation: scanline 2.5s infinite linear;
             pointer-events: none;
             z-index: 6;
         }
-        .card-custom { border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
         .progress-steps .step-item {
             font-size: 0.8rem;
             transition: all 0.3s ease;
             width: 30%;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-secondary);
         }
         .progress-steps .active-step {
-            background: linear-gradient(135deg, #0d6efd, #0b5ed7) !important;
+            background: var(--accent-gradient) !important;
             color: white !important;
-            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
+            box-shadow: 0 4px 12px var(--accent-glow);
         }
         .progress-steps .completed-step {
-            background: #198754 !important;
+            background: var(--accent-emerald) !important;
             color: white !important;
+        }
+        .light-theme .progress-steps .step-item {
+            background: rgba(0,0,0,0.05);
         }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column justify-content-between">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-shield-check text-primary me-2"></i>Biometric Vote</a>
-            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+    <!-- Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-primary fs-3"></i>
+                <span class="fw-bold tracking-wider fs-5">BIOMETRIC VOTE</span>
+            </div>
+            <a href="index.html" class="btn btn-premium-outline btn-sm py-2"><i class="bi bi-house me-1"></i>Home Portal</a>
         </div>
     </nav>
 
@@ -81,27 +89,27 @@
             
             <!-- Registration Form & Camera -->
             <div class="col-lg-7">
-                <div class="card card-custom p-4 p-md-5 bg-white">
-                    <h3 class="fw-bold text-dark mb-2"><i class="bi bi-person-plus-fill text-primary me-2"></i>Biometric Voter Enrollment</h3>
-                    <p class="text-muted small mb-4">Center your face in the oval frame below to capture your unique face encoding & voter profile photo. The camera does a real-time liveness check to block photos or mobile screens.</p>
+                <div class="card glass-card p-4 p-md-5">
+                    <h3 class="fw-bold mb-2"><i class="bi bi-person-plus-fill text-primary me-2"></i>Biometric Voter Enrollment</h3>
+                    <p class="text-secondary small mb-4">Center your face in the oval frame below to capture your unique face encoding & voter profile photo. The camera does a real-time liveness check to block photos or mobile screens.</p>
 
                     <!-- Alert Banner -->
                     <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
 
                     <form id="reg-form">
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">Voter Full Name</label>
-                            <input type="text" id="voter_name" class="form-control form-control-lg" placeholder="e.g. Rahul Sharma" required>
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Voter Full Name</label>
+                            <input type="text" id="voter_name" class="form-control form-control-lg form-control-premium" placeholder="e.g. Rahul Sharma" required>
                         </div>
 
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Date of Birth</label>
-                                <input type="date" id="voter_dob" class="form-control form-control-lg" required>
+                                <label class="form-label small fw-bold text-secondary text-uppercase">Date of Birth</label>
+                                <input type="date" id="voter_dob" class="form-control form-control-lg form-control-premium" required>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
-                                <label class="form-label fw-semibold">Gender</label>
-                                <select id="voter_gender" class="form-select form-select-lg" required>
+                                <label class="form-label small fw-bold text-secondary text-uppercase">Gender</label>
+                                <select id="voter_gender" class="form-select form-select-lg form-control-premium" required>
                                     <option value="" disabled selected>-- Select Gender --</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -122,12 +130,12 @@
                             </div>
                         </div>
 
-                        <div id="pose-instruction" class="alert alert-info text-center border-1 mb-4 py-2">
-                            <span class="fw-bold"><i class="bi bi-arrow-left-circle-fill text-primary me-2"></i>Step 1: Turn your face to the LEFT</span>
+                        <div id="pose-instruction" class="alert alert-info text-center border-0 mb-4 py-2" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">
+                            <span class="fw-bold"><i class="bi bi-arrow-left-circle-fill me-2"></i>Step 1: Turn your face to the LEFT</span>
                         </div>
 
                         <div class="mb-4 text-center">
-                            <label class="form-label fw-semibold mb-2">Live Facial Capture</label>
+                            <label class="form-label small fw-bold text-secondary text-uppercase mb-2">Live Facial Capture</label>
                             <div class="webcam-container">
                                 <video id="webcam" autoplay playsinline muted></video>
                                 <div class="scan-overlay"></div>
@@ -139,8 +147,8 @@
                             <canvas id="canvas" class="d-none" width="640" height="480"></canvas>
                         </div>
 
-                        <button type="submit" id="btn-submit" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
-                            <i class="bi-arrow-left-circle-fill me-2"></i>👈 CAPTURE LEFT POSE
+                        <button type="submit" id="btn-submit" class="btn btn-premium btn-lg w-100 py-3">
+                            👈 CAPTURE LEFT POSE
                         </button>
                     </form>
                 </div>
@@ -152,6 +160,13 @@
     <!-- Client-Side Biometrics & Web Storage Script -->
     <script src="db.js?v=38"></script>
     <script>
+        // Apply theme persistence
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+        }
+
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const regForm = document.getElementById('reg-form');
@@ -771,7 +786,7 @@
             updateStepUI();
         }
     </script>
-    <footer class="py-4 text-center mt-5" style="border-top: 1px solid rgba(0,0,0,0.06); background: rgba(0,0,0,0.02);">
+    <footer class="py-4 text-center mt-5" style="border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.4);">
         <p class="mb-0 text-muted fst-italic" style="font-size: 0.9rem;">"The ignorance of one voter in a democracy impairs the security of all." — John F. Kennedy</p>
     </footer>
 </body>

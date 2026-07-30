@@ -6,30 +6,14 @@
     <title>Voter Profile Correction | Secure Biometric Voting</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { background: #0b0f19; font-family: 'Outfit', sans-serif; color: #f1f5f9; }
-        .hero-title {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            background: linear-gradient(135deg, #c084fc, #6366f1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .correction-card {
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(168, 85, 247, 0.25);
-            border-radius: 24px;
-            box-shadow: 0 8px 32px 0 rgba(168, 85, 247, 0.1);
-        }
         .webcam-box {
             position: relative;
             width: 100%;
             max-width: 440px;
             margin: 0 auto;
-            border-radius: 20px;
+            border-radius: 24px;
             overflow: hidden;
             border: 3px solid #a855f7;
             box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
@@ -61,52 +45,46 @@
             50% { top: 100%; }
             100% { top: 0%; }
         }
-        .form-control, .form-select {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 12px;
+        .purple-gradient-text {
+            background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .form-control:focus, .form-select:focus {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #a855f7;
-            box-shadow: 0 0 0 0.25rem rgba(168, 85, 247, 0.25);
-            color: #fff;
-        }
-        .btn-purple {
+        .btn-purple-premium {
             background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: #ffffff !important;
             border: none;
-            color: #fff;
             border-radius: 12px;
+            padding: 0.75rem 1.75rem;
             font-weight: 600;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.25);
         }
-        .btn-purple:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        .navbar {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        .btn-purple-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.25);
+            opacity: 0.95;
         }
     </style>
 </head>
 <body class="d-flex flex-column justify-content-between min-vh-100 py-0">
 
-    <!-- Top Navigation Bar -->
-    <nav class="navbar navbar-dark py-3">
-        <div class="container d-flex justify-content-between">
-            <span class="navbar-brand mb-0 h1 fw-bold"><i class="bi bi-shield-check text-purple me-2"></i>Secure Biometric Voting</span>
-            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+    <!-- Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check fs-3" style="color: #a855f7;"></i>
+                <span class="fw-bold tracking-wider fs-5">BIOMETRIC VOTE SYSTEM</span>
+            </div>
+            <a href="index.html" class="btn btn-premium-outline btn-sm py-2"><i class="bi bi-house me-1"></i>Home Portal</a>
         </div>
     </nav>
 
     <div class="container py-5 text-center my-auto">
         <div class="row justify-content-center">
             <div class="col-lg-7">
-                <div class="card correction-card p-4 p-md-5">
-                    <h2 class="fw-bold mb-2 hero-title"><i class="bi bi-pencil-square me-2"></i>Voter Profile Correction</h2>
+                <div class="card glass-card p-4 p-md-5">
+                    <h2 class="fw-bold mb-2 purple-gradient-text"><i class="bi bi-pencil-square me-2"></i>Voter Profile Correction</h2>
                     <p class="text-secondary mb-4">First, align your face in the oval container to biometrically verify your registered voter profile.</p>
 
                     <div id="alert-box" class="alert d-none mb-4 text-start" role="alert"></div>
@@ -140,18 +118,18 @@
 
                         <form id="correction-form">
                             <div class="mb-4">
-                                <label class="form-label small fw-bold text-white-50">Proposed Full Name</label>
-                                <input type="text" id="new_name" class="form-control form-control-lg bg-dark text-white border-secondary" placeholder="Enter corrected full name" required>
+                                <label class="form-label small fw-bold text-secondary text-uppercase">Proposed Full Name</label>
+                                <input type="text" id="new_name" class="form-control form-control-lg form-control-premium" placeholder="Enter corrected full name" required>
                             </div>
 
                             <div class="row mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-white-50">Proposed Date of Birth</label>
-                                    <input type="date" id="new_dob" class="form-control form-control-lg bg-dark text-white border-secondary" required>
+                                    <label class="form-label small fw-bold text-secondary text-uppercase">Proposed Date of Birth</label>
+                                    <input type="date" id="new_dob" class="form-control form-control-lg form-control-premium" required>
                                 </div>
                                 <div class="col-md-6 mt-3 mt-md-0">
-                                    <label class="form-label small fw-bold text-white-50">Proposed Gender</label>
-                                    <select id="new_gender" class="form-select form-select-lg bg-dark text-white border-secondary" required>
+                                    <label class="form-label small fw-bold text-secondary text-uppercase">Proposed Gender</label>
+                                    <select id="new_gender" class="form-select form-select-lg form-control-premium" required>
                                         <option value="" disabled>-- Select Gender --</option>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
@@ -160,7 +138,7 @@
                                 </div>
                             </div>
 
-                            <button type="submit" id="btn-submit" class="btn btn-purple btn-lg px-5 py-3 fw-bold w-100 fs-5">
+                            <button type="submit" id="btn-submit" class="btn btn-purple-premium btn-lg w-100 py-3">
                                 <i class="bi bi-check-circle-fill me-2"></i>SUBMIT CORRECTION REQUEST
                             </button>
                         </form>
@@ -172,12 +150,19 @@
     </div>
 
     <!-- Righteous Quote Footer -->
-    <footer class="py-4 text-center mt-5" style="border-top: 1px solid rgba(255,255,255,0.05); background: rgba(15,23,42,0.45);">
-        <p class="mb-0 text-white-50 fst-italic" style="font-size: 0.9rem;">"Elections belong to the people. It's their decision." — Abraham Lincoln</p>
+    <footer class="py-4 text-center mt-5" style="border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.45);">
+        <p class="mb-0 text-muted fst-italic" style="font-size: 0.9rem;">"Elections belong to the people. It's their decision." — Abraham Lincoln</p>
     </footer>
 
     <script src="db.js?v=38"></script>
     <script>
+        // Apply theme persistence
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+        }
+
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const alertBox = document.getElementById('alert-box');

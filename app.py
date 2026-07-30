@@ -13,6 +13,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(VOTER_UPLOADS_FOLDER, exist_ok=True)
 
 def get_db_connection():
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url:
+        return psycopg2.connect(db_url)
     return psycopg2.connect(host="127.0.0.1", database="voting_db", user="postgres", password="")
 
 def save_uploaded_logo(file_obj):

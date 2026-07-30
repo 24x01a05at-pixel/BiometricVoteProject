@@ -9,26 +9,25 @@
     <title>Official Certified Results</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { background: #f8fafc; font-family: 'Outfit', sans-serif; }
-        .winner-card { background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%); color: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3); }
-        .tie-card { background: linear-gradient(135deg, #b45309 0%, #78350f 100%); color: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(180, 83, 9, 0.3); }
-        .no-winner-card { background: linear-gradient(135deg, #475569 0%, #1e293b 100%); color: white; border-radius: 20px; }
-        .card-custom { border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
-        .winner-logo-box { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #f59e0b; background: white; margin: 0 auto 1.5rem; }
-        .tie-logo-box { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; background: white; margin: 0 0.5rem 1rem; }
+        .winner-card { background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%) !important; color: white !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+        .tie-card { background: linear-gradient(135deg, #b45309 0%, #78350f 100%) !important; color: white !important; border-radius: 20px; box-shadow: 0 10px 30px rgba(180, 83, 9, 0.3) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+        .no-winner-card { background: linear-gradient(135deg, #475569 0%, #1e293b 100%) !important; color: white !important; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1) !important; }
+        .winner-logo-box { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #f59e0b; background: rgba(255,255,255,0.05); margin: 0 auto 1.5rem; }
+        .tie-logo-box { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; background: rgba(255,255,255,0.05); margin: 0 0.5rem 1rem; }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column justify-content-between">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-award-fill text-warning me-2"></i>Official Election Results</a>
-            <div>
-                <a href="index.html" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-house me-1"></i>Home Portal</a>
-                <button onclick="exportCSV()" class="btn btn-success btn-sm me-2"><i class="bi bi-download me-1"></i>CSV Report</button>
-                <a href="certificate.html" class="btn btn-warning btn-sm fw-bold"><i class="bi bi-trophy-fill me-1"></i>Certificate</a>
+    <!-- Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand fw-bold text-primary" href="index.html"><i class="bi bi-award-fill text-warning me-2"></i>Official Election Results</a>
+            <div class="d-flex gap-2">
+                <a href="index.html" class="btn btn-premium-outline btn-sm py-2"><i class="bi bi-house me-1"></i>Home Portal</a>
+                <button onclick="exportCSV()" class="btn btn-premium btn-sm py-2" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);"><i class="bi bi-download me-1"></i>CSV Report</button>
+                <a href="certificate.html" class="btn btn-premium btn-sm py-2" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"><i class="bi bi-trophy-fill me-1"></i>Winner Certificate</a>
             </div>
         </div>
     </nav>
@@ -38,12 +37,12 @@
         <!-- Results Locked state -->
         <div id="results-locked-section" class="row justify-content-center d-none">
             <div class="col-md-7 text-center py-5">
-                <div class="card card-custom p-5 bg-white">
+                <div class="card glass-card p-5">
                     <div class="text-danger mb-4"><i class="bi bi-lock display-1"></i></div>
                     <h2 class="fw-bold mb-2">Certified Results Locked</h2>
-                    <p class="text-muted leading-relaxed">Official election results are secure and hidden while voting remains active. The Election Commission will release the final certified tallies once voting is officially closed.</p>
+                    <p class="text-secondary leading-relaxed">Official election results are secure and hidden while voting remains active. The Election Commission will release the final certified tallies once voting is officially closed.</p>
                     <div class="mt-4">
-                        <a href="index.html" class="btn btn-primary px-4 fw-bold">Return to Portal</a>
+                        <a href="index.html" class="btn btn-premium px-4">Return to Portal</a>
                     </div>
                 </div>
             </div>
@@ -55,12 +54,12 @@
             <div id="winner-tie-card-box"></div>
 
             <!-- Results Breakdown Table -->
-            <div class="card card-custom p-4 p-md-5 bg-white mt-4">
-                <h3 class="fw-bold mb-4 text-dark"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Final Vote Tally</h3>
+            <div class="card glass-card p-4 p-md-5 mt-4">
+                <h3 class="fw-bold mb-4"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Final Vote Tally</h3>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle fs-5">
-                        <thead class="table-dark">
-                            <tr>
+                    <table class="table table-hover align-middle fs-5 text-inherit" style="color: inherit;">
+                        <thead>
+                            <tr class="text-secondary">
                                 <th>Rank</th>
                                 <th>Candidate Name</th>
                                 <th>Party Name</th>
@@ -82,6 +81,13 @@
     <!-- Client-Side Results Parsing Script -->
     <script src="db.js?v=38"></script>
     <script>
+        // Apply theme persistence
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+        }
+
         let config = {};
         let candidates = [];
         let voters = [];
@@ -209,7 +215,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="fw-bold">#${idx + 1}</td>
-                    <td class="fw-bold text-dark">${r.name}</td>
+                    <td class="fw-bold">${r.name}</td>
                     <td><span class="badge bg-secondary fs-6">${r.party_name}</span></td>
                     <td class="text-end text-primary">${r.votes || 0}</td>
                     <td class="text-end text-warning">+${r.tie_votes || 0}</td>
@@ -240,8 +246,8 @@
             a.click();
         }
     </script>
-    <footer class="py-4 text-center mt-5" style="border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.25);">
-        <p class="mb-0 text-white-50 fst-italic" style="font-size: 0.9rem;">"Our lives begin to end the day we become silent about things that matter." — Martin Luther King Jr.</p>
+    <footer class="py-4 text-center mt-5" style="border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.45);">
+        <p class="mb-0 text-muted fst-italic" style="font-size: 0.9rem;">"Our lives begin to end the day we become silent about things that matter." — Martin Luther King Jr.</p>
     </footer>
 </body>
 </html>

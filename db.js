@@ -1,6 +1,6 @@
-// Cloud Database Helper using keyvalue.immanuel.co for shared database across devices
-const APP_KEY = "tbeuf3z3";
-const BASE_URL = `https://keyvalue.immanuel.co/api/KeyVal`;
+// Cloud Database Helper using jsonblob.com for shared database across devices
+const BLOB_ID = "019fb2b6-0ee6-7bdd-b5c0-e2d8fc17a77b";
+const BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
 
 // Safe Base64 Helper for URL-safe path values in IIS
 function encodeSafeBase64(str) {
@@ -19,27 +19,38 @@ function decodeSafeBase64(str) {
 }
 
 async function getCloudValue(key) {
-    const response = await fetch(`${BASE_URL}/GetValue/${APP_KEY}/${key}`);
+    const response = await fetch(BASE_URL);
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`Cloud error ${response.status}`);
-    const resText = await response.text();
-    if (!resText || resText === "null") return null;
-    const encodedVal = JSON.parse(resText);
-    if (!encodedVal) return null;
-    return decodeSafeBase64(encodedVal);
+    const dbObj = await response.json();
+    hideOfflineWarningBadge();
+    if (!dbObj || !dbObj[key]) return null;
+    return decodeSafeBase64(dbObj[key]);
 }
 
 async function setCloudValue(key, valueStr) {
-    const encodedVal = encodeSafeBase64(valueStr);
-    const response = await fetch(`${BASE_URL}/UpdateValue/${APP_KEY}/${key}/${encodedVal}`, {
-        method: 'POST',
-        headers: {
-            'Content-Length': '0'
-        }
-    });
-    if (!response.ok) {
-        throw new Error(`Write failed: ${response.status}`);
+    // 1. Fetch current database object
+    const getResponse = await fetch(BASE_URL);
+    if (!getResponse.ok) {
+        throw new Error(`Failed to fetch database for update: ${getResponse.status}`);
     }
+    const dbObj = await getResponse.json();
+    
+    // 2. Encode and update the key
+    dbObj[key] = encodeSafeBase64(valueStr);
+    
+    // 3. PUT the updated database object back to jsonblob
+    const putResponse = await fetch(BASE_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dbObj)
+    });
+    if (!putResponse.ok) {
+        throw new Error(`Write failed: ${putResponse.status}`);
+    }
+    hideOfflineWarningBadge();
 }
 
 // Compress / Downscale image to fit 1024 limit
@@ -411,6 +422,13 @@ function showOfflineWarningBadge() {
         `;
         badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)`;
         document.body.appendChild(badge);
+    }
+}
+
+function hideOfflineWarningBadge() {
+    const badge = document.getElementById('cloud-offline-badge');
+    if (badge) {
+        badge.remove();
     }
 }
 

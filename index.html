@@ -6,180 +6,320 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Biometric Vote Portal</title>
+    <title>National Biometric Voting Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { 
-            background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%); 
-            min-height: 100vh; 
-            color: #f3f4f6; 
-            font-family: 'Outfit', sans-serif; 
+        /* Specific page additions */
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
         }
-        .hero-title { 
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 800; 
-            background: linear-gradient(90deg, #22d3ee, #818cf8); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
+        .hero-section {
+            position: relative;
+            z-index: 2;
+            padding: 4rem 1rem 3rem 1rem;
         }
-        .feature-card { 
-            background: rgba(255, 255, 255, 0.03) !important; 
-            border: 1px solid rgba(255, 255, 255, 0.08) !important; 
-            backdrop-filter: blur(12px) !important; 
-            -webkit-backdrop-filter: blur(12px) !important;
-            border-radius: 24px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            height: 100%; 
-        }
-        .feature-card:hover { 
-            transform: translateY(-8px) scale(1.02); 
-            border-color: rgba(34, 211, 238, 0.6); 
-            box-shadow: 0 0 30px rgba(34, 211, 238, 0.25); 
-        }
-        .badge-status { 
-            font-size: 1rem; 
-            padding: 0.6rem 1.2rem; 
-            border-radius: 50px; 
+        .trust-badge {
+            background: rgba(34, 211, 238, 0.12);
+            border: 1px solid rgba(34, 211, 238, 0.25);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
             font-weight: 600;
+            display: inline-flex;
+            align-items: center;
         }
-        .icon-box { 
-            width: 70px; 
-            height: 70px; 
-            border-radius: 20px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 2.2rem; 
-            margin-bottom: 1.5rem; 
-            box-shadow: inset 0 0 15px rgba(255,255,255,0.05);
-        }
-        .feature-card h4 {
-            color: #ffffff !important;
-        }
-        .feature-card p {
-            color: rgba(255, 255, 255, 0.7) !important;
+        .icon-lg-shield {
+            font-size: 4rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 15px var(--accent-glow));
         }
     </style>
 </head>
-<body class="d-flex flex-column justify-content-between py-4">
+<body class="d-flex flex-column min-h-100">
 
-    <div class="container text-center my-auto">
-        <!-- Header Banner -->
-        <div class="mb-5">
-            <h1 class="display-3 hero-title mb-3"><i class="bi bi-shield-check me-2"></i>Secure Biometric Voting</h1>
-            <p class="lead text-light opacity-75 mb-2">Facial Recognition & Tamper-Proof Election Protocol</p>
-            
-            <!-- Rotating Quotes Banner -->
-            <div id="quotes-container" class="text-white-50 fst-italic py-2 px-3 rounded shadow-sm d-flex align-items-center justify-content-center" style="font-size: 0.95rem; min-height: 40px; max-width: 650px; margin: 0.5rem auto 0 auto; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05);">
-                <span id="righteous-quote" style="transition: opacity 0.5s ease-in-out; opacity: 1;">"The ballot is stronger than the bullet." — Abraham Lincoln</span>
+    <!-- Top Navigation Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-primary fs-3"></i>
+                <span class="fw-bold tracking-wider fs-5">BIOMETRIC VOTE SYSTEM</span>
             </div>
-            
-            <div class="mt-4">
-                <span id="state-badge" class="badge bg-secondary badge-status">Loading Election State...</span>
-                <div class="mt-2 text-warning fs-5 fw-bold d-none" id="timer-box">Time Remaining: <span id="timer-countdown"></span></div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="trust-badge text-cyan d-none d-md-inline-block">
+                    <i class="bi bi-patch-check-fill me-1"></i> SECURE • TRANSPARENT • FAIR
+                </div>
+                <!-- Theme Toggle -->
+                <button class="theme-toggle-btn" id="theme-toggle" title="Toggle Light/Dark Theme">
+                    <i class="bi bi-moon-fill" id="theme-icon"></i>
+                </button>
             </div>
         </div>
+    </nav>
 
-        <!-- Navigation Tiles -->
+    <!-- Canvas for particles -->
+    <div class="position-relative overflow-hidden w-100" style="background: rgba(0,0,0,0.1);">
+        <canvas id="hero-canvas"></canvas>
+        
+        <!-- Interactive Hero Section -->
+        <div class="container hero-section text-center">
+            <div class="floating-icon mb-4">
+                <i class="bi bi-shield-lock-fill icon-lg-shield"></i>
+            </div>
+            <h1 class="display-4 fw-extrabold mb-3"><span class="gradient-text">Secure Biometric Voting</span></h1>
+            <p class="lead text-secondary max-w-600 mx-auto mb-4">
+                A highly secure, decentralized, and live-authenticated voting ledger utilizing real-time face signature validation and anti-spoof checks.
+            </p>
+            
+            <!-- Live Election Status -->
+            <div class="mb-4">
+                <span id="state-badge" class="badge bg-secondary badge-status py-2 px-3 align-items-center gap-2">
+                    <span class="pulse-dot me-2"></span>Loading status...
+                </span>
+                <div class="mt-3 text-warning fs-5 fw-bold d-none" id="timer-box">
+                    <i class="bi bi-stopwatch me-1"></i>Time Remaining: <span id="timer-countdown"></span>
+                </div>
+            </div>
+
+            <!-- Rotating quotes slider -->
+            <div class="glass-card max-w-600 mx-auto p-4 mb-5 quote-slider position-relative" style="max-width: 650px;">
+                <i class="bi bi-quote position-absolute text-muted opacity-10 fs-1" style="top: 10px; left: 20px;"></i>
+                <div id="quote-wrapper" class="w-100">
+                    <!-- Quote loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tiles -->
+    <div class="container my-5">
         <div class="row g-4 justify-content-center">
-            <!-- Voter Registration Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="voter_reg.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-primary bg-opacity-25 text-primary">
+            
+            <!-- Voter Registration -->
+            <div class="col-md-6 col-lg-4">
+                <a href="voter_reg.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-primary bg-opacity-15 text-primary">
                             <i class="bi bi-person-bounding-box"></i>
                         </div>
                         <h4 class="fw-bold mb-2">Voter Enrollment</h4>
-                        <p class="text-secondary small mb-4">Biometric face recognition setup. Prevents duplicate face registrations.</p>
+                        <p class="text-secondary small mb-4">Register your secure 3D face biometric encoding profile. Prevents duplicate face registrations.</p>
                         <span class="text-primary fw-semibold small">Register Face <i class="bi bi-arrow-right ms-1"></i></span>
                     </div>
                 </a>
             </div>
 
-            <!-- Candidate Nomination Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="candidate_reg.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-warning bg-opacity-25 text-warning">
+            <!-- Candidate Nomination -->
+            <div class="col-md-6 col-lg-4">
+                <a href="candidate_reg.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-warning bg-opacity-15 text-warning">
                             <i class="bi bi-person-badge"></i>
                         </div>
-                        <h4 class="fw-bold mb-2">Candidate Nomination</h4>
-                        <p class="text-secondary small mb-4">Nominate candidates outside Admin. Requires Admin Control Center approval.</p>
-                        <span class="text-warning fw-semibold small">Nominate Candidate <i class="bi bi-arrow-right ms-1"></i></span>
+                        <h4 class="fw-bold mb-2">Nominate Candidate</h4>
+                        <p class="text-secondary small mb-4">Register candidates and submit political party logos for Election Commission validation.</p>
+                        <span class="text-warning fw-semibold small">Submit Nomination <i class="bi bi-arrow-right ms-1"></i></span>
                     </div>
                 </a>
             </div>
 
-            <!-- Voting Booth Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="booth.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-success bg-opacity-25 text-success">
+            <!-- Voting Booth -->
+            <div class="col-md-6 col-lg-4">
+                <a href="booth.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-success bg-opacity-15 text-success">
                             <i class="bi bi-camera-video"></i>
                         </div>
                         <h4 class="fw-bold mb-2">Voting Booth</h4>
-                        <p class="text-secondary small mb-4">Scan face to verify identity and cast your confidential vote on ballot.</p>
-                        <span class="text-success fw-semibold small">Enter Booth <i class="bi bi-arrow-right ms-1"></i></span>
+                        <p class="text-secondary small mb-4">Verify your registered details and scan face signature to enter the secure ballot room.</p>
+                        <span class="text-success fw-semibold small">Cast Your Vote <i class="bi bi-arrow-right ms-1"></i></span>
                     </div>
                 </a>
             </div>
 
-            <!-- Admin Control Center Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="admin.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-danger bg-opacity-25 text-danger">
-                            <i class="bi bi-shield-lock-fill"></i>
-                        </div>
-                        <h4 class="fw-bold mb-2">Admin Center</h4>
-                        <p class="text-secondary small mb-4">Password login required. Approve candidates, set duration & conduct election.</p>
-                        <span class="text-danger fw-semibold small">Admin Login <i class="bi bi-arrow-right ms-1"></i></span>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Results Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="results.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-info bg-opacity-25 text-info">
+            <!-- Results -->
+            <div class="col-md-6 col-lg-4">
+                <a href="results.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-info bg-opacity-15 text-info">
                             <i class="bi bi-bar-chart-line-fill"></i>
                         </div>
                         <h4 class="fw-bold mb-2">Official Results</h4>
-                        <p class="text-secondary small mb-4">View final certified election tally & winner certificate after closing.</p>
-                        <span class="text-info fw-semibold small">View Results <i class="bi bi-arrow-right ms-1"></i></span>
+                        <p class="text-secondary small mb-4">View secure, live voting tallies, tie-breaker results, and final certified winner badges.</p>
+                        <span class="text-info fw-semibold small">View Statistics <i class="bi bi-arrow-right ms-1"></i></span>
                     </div>
                 </a>
             </div>
 
-            <!-- Voter Profile Correction Tile -->
-            <div class="col-md-6 col-lg-3">
-                <a href="correction.html" class="text-decoration-none text-white">
-                    <div class="card feature-card p-4 text-start">
-                        <div class="icon-box bg-secondary bg-opacity-25 text-secondary" style="color: #a855f7 !important; background-color: rgba(168, 85, 247, 0.25) !important;">
-                            <i class="bi bi-pencil-square" style="color: #a855f7 !important;"></i>
+            <!-- Voter Profile Correction -->
+            <div class="col-md-6 col-lg-4">
+                <a href="correction.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-opacity-15" style="background-color: rgba(168, 85, 247, 0.15); color: #a855f7;">
+                            <i class="bi bi-pencil-square"></i>
                         </div>
-                        <h4 class="fw-bold mb-2">Voter Correction</h4>
-                        <p class="text-secondary small mb-4">Correct registered name, age, or gender details. Requires Admin approval.</p>
-                        <span class="fw-semibold small" style="color: #a855f7 !important;">Request Change <i class="bi bi-arrow-right ms-1"></i></span>
+                        <h4 class="fw-bold mb-2">Profile Correction</h4>
+                        <p class="text-secondary small mb-4">Correct registered name, Date of Birth, or gender errors under biometric verification verification.</p>
+                        <span class="fw-semibold small" style="color: #a855f7;">Request Edit <i class="bi bi-arrow-right ms-1"></i></span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Admin Center -->
+            <div class="col-md-6 col-lg-4">
+                <a href="admin.html" class="text-decoration-none">
+                    <div class="card glass-card glass-card-hover p-4 h-100 text-start">
+                        <div class="icon-box bg-danger bg-opacity-15 text-danger">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Admin Dashboard</h4>
+                        <p class="text-secondary small mb-4">Manage election timeline, review candidate approvals, and authorize voter corrections.</p>
+                        <span class="text-danger fw-semibold small">Configure Election <i class="bi bi-arrow-right ms-1"></i></span>
                     </div>
                 </a>
             </div>
         </div>
 
-        <div class="mt-5 text-secondary fs-6 d-flex justify-content-center gap-4 flex-wrap">
-            <span><i class="bi bi-people-fill text-primary me-1"></i> <span id="voter-count">0</span> Total Registered Voters</span>
-            <span><i class="bi bi-check-circle-fill text-success me-1"></i> <span id="voted-count">0</span> Voted</span>
-            <span><i class="bi bi-clock-history text-warning me-1"></i> <span id="pending-count">0</span> Pending Voters</span>
-            <span><i class="bi bi-award-fill text-info me-1"></i> <span id="candidate-count">0</span> Approved Candidates</span>
+        <!-- Live Statistics Counters -->
+        <div class="row g-3 justify-content-center text-center mt-5">
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3">
+                    <div class="fs-3 fw-bold text-primary" id="voter-count">0</div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Registered Voters</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3">
+                    <div class="fs-3 fw-bold text-success" id="voted-count">0</div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Votes Cast</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3">
+                    <div class="fs-3 fw-bold text-warning" id="pending-count">0</div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Pending Voters</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3">
+                    <div class="fs-3 fw-bold text-info" id="candidate-count">0</div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Ballot Options</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Showing Election Phases -->
+        <div class="mt-5 pt-4">
+            <h3 class="text-center fw-bold mb-5"><span class="gradient-text">Election Progression Phases</span></h3>
+            
+            <div class="timeline-container position-relative">
+                <div class="timeline-line"></div>
+                
+                <div class="timeline-item timeline-left">
+                    <div class="glass-card p-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary">Phase 1</span>
+                            <h5 class="fw-bold mb-0">Voter Enrollment</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Citizens register online, capturing 3 different profiles (Straight, Left, Right) to build a unique biometric signature map.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item timeline-right">
+                    <div class="glass-card p-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-warning text-dark">Phase 2</span>
+                            <h5 class="fw-bold mb-0">Nominations Approval</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Candidates file applications along with their party logos. Nominations are reviewed and approved by the Administrator.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item timeline-left">
+                    <div class="glass-card p-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-success">Phase 3</span>
+                            <h5 class="fw-bold mb-0">Biometric Verification</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">The Voting Booth opens. System checks liveness (rejects printouts/glare screens) and cross-checks face encodings.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item timeline-right">
+                    <div class="glass-card p-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-danger">Phase 4</span>
+                            <h5 class="fw-bold mb-0">Ballot Casting</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Voters anonymously choose their candidates on a cryptographically isolated digital ballot, immediately updating the secure logs.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item timeline-left">
+                    <div class="glass-card p-4">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-info text-dark">Phase 5</span>
+                            <h5 class="fw-bold mb-0">Certified Tallies</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Voting period closes. Results are certified immediately, tie-breaker events resolved, and winner receipts generated.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Professional Footer -->
+    <footer class="mt-auto py-4 text-center" style="background: rgba(15, 23, 42, 0.4); border-top: 1px solid var(--card-border);">
+        <div class="container">
+            <div class="d-flex justify-content-center gap-3 mb-2 text-muted fs-6">
+                <span><i class="bi bi-shield-lock-fill me-1"></i> AES-256 Encryption</span>
+                <span>•</span>
+                <span><i class="bi bi-hdd-network-fill me-1"></i> Immutable Cloud Ledger</span>
+                <span>•</span>
+                <span><i class="bi bi-eye-slash-fill me-1"></i> Confidential Ballots</span>
+            </div>
+            <p class="text-muted small mb-0">&copy; 2026 National Digital Election Commission. All rights reserved.</p>
+        </div>
+    </footer>
 
     <!-- Init LocalStorage Data Script -->
     <script src="db.js?v=38"></script>
     <script>
+        // Theme toggler logic
+        const themeBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        // Load initial theme state
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+            themeIcon.className = 'bi bi-sun-fill';
+        } else {
+            document.body.classList.remove('light-theme');
+            themeIcon.className = 'bi bi-moon-fill';
+        }
+
+        themeBtn.addEventListener('click', () => {
+            if (document.body.classList.contains('light-theme')) {
+                document.body.classList.remove('light-theme');
+                themeIcon.className = 'bi bi-moon-fill';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.body.classList.add('light-theme');
+                themeIcon.className = 'bi bi-sun-fill';
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
         async function init() {
             showSpinner("Loading cloud database...");
             const config = await getDB('election_config', {
@@ -255,28 +395,91 @@
         }
         init();
 
-        // Righteous Quotes Rotator
+        // Democracy Quotes Database
         const quotes = [
-            `"The ballot is stronger than the bullet." — Abraham Lincoln`,
-            `"A citizen's right to vote is the foundation of any democracy." — Chief Justice John Roberts`,
-            `"Talk is cheap, voting is free; take it to the polls." — Nanette L. Avery`,
-            `"There is no such thing as a vote that doesn’t matter." — Barack Obama`,
-            `"The ignorance of one voter in a democracy impairs the security of all." — John F. Kennedy`,
-            `"Elections belong to the people. It's their decision." — Abraham Lincoln`,
-            `"Voting is not only our right—it is our power." — Loung Ung`
+            { text: "The ballot is stronger than the bullet.", author: "Abraham Lincoln", icon: "bi-shield-check" },
+            { text: "A citizen's right to vote is the foundation of any democracy.", author: "Chief Justice John Roberts", icon: "bi-award" },
+            { text: "Talk is cheap, voting is free; take it to the polls.", author: "Nanette L. Avery", icon: "bi-check-circle" },
+            { text: "There is no such thing as a vote that doesn’t matter.", author: "Barack Obama", icon: "bi-people" },
+            { text: "The ignorance of one voter in a democracy impairs the security of all.", author: "John F. Kennedy", icon: "bi-lock" },
+            { text: "Elections belong to the people. It's their decision.", author: "Abraham Lincoln", icon: "bi-globe" },
+            { text: "Voting is not only our right—it is our power.", author: "Loung Ung", icon: "bi-lightning-charge" }
         ];
+
         let quoteIndex = 0;
-        const quoteEl = document.getElementById('righteous-quote');
+        const quoteWrapper = document.getElementById('quote-wrapper');
+
+        function renderQuote() {
+            const q = quotes[quoteIndex];
+            quoteWrapper.innerHTML = `
+                <div class="quote-slide text-center">
+                    <h5 class="fw-semibold fst-italic px-3 mb-2">"${q.text}"</h5>
+                    <div class="d-flex align-items-center justify-content-center gap-2 text-muted small">
+                        <i class="bi ${q.icon} text-primary"></i>
+                        <span>— ${q.author}</span>
+                    </div>
+                </div>
+            `;
+            quoteIndex = (quoteIndex + 1) % quotes.length;
+        }
         
-        setInterval(() => {
-            quoteEl.style.opacity = 0;
-            setTimeout(() => {
-                quoteIndex = (quoteIndex + 1) % quotes.length;
-                quoteEl.innerText = quotes[quoteIndex];
-                quoteEl.style.opacity = 1;
-            }, 500);
-        }, 6000);
+        renderQuote();
+        setInterval(renderQuote, 5000);
+
+        // Lightweight Canvas-Based Particle Field
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 0.4 - 0.2;
+                this.speedY = Math.random() * 0.4 - 0.2;
+                this.color = Math.random() > 0.5 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(6, 182, 212, 0.25)';
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const count = Math.min(60, Math.floor((canvas.width * canvas.height) / 15000));
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+        initParticles();
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
     </script>
-<!-- Build Trigger -->
 </body>
 </html>

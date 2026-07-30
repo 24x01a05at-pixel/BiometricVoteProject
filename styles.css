@@ -1,0 +1,320 @@
+/* Secure Biometric Voting - Premium Global Design System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* Dark Theme (Default) */
+    --bg-primary: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+    --bg-solid: #020617;
+    --card-bg: rgba(15, 23, 42, 0.55);
+    --card-bg-hover: rgba(30, 41, 59, 0.7);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-border-hover: rgba(59, 130, 246, 0.4);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-emerald: #10b981;
+    --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+    --accent-glow: rgba(59, 130, 246, 0.25);
+    --shadow-color: rgba(0, 0, 0, 0.6);
+    --header-bg: rgba(15, 23, 42, 0.75);
+}
+
+.light-theme {
+    /* Light Theme */
+    --bg-primary: radial-gradient(circle at 50% 50%, #f8fafc 0%, #e2e8f0 100%);
+    --bg-solid: #f1f5f9;
+    --card-bg: rgba(255, 255, 255, 0.75);
+    --card-bg-hover: rgba(255, 255, 255, 0.95);
+    --card-border: rgba(15, 23, 42, 0.08);
+    --card-border-hover: rgba(37, 99, 235, 0.45);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent-blue: #2563eb;
+    --accent-cyan: #0891b2;
+    --accent-emerald: #059669;
+    --accent-gradient: linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+    --accent-glow: rgba(37, 99, 235, 0.15);
+    --shadow-color: rgba(148, 163, 184, 0.15);
+    --header-bg: rgba(255, 255, 255, 0.8);
+}
+
+/* Base resets and smooth behavior */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg-primary) !important;
+    background-color: var(--bg-solid) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+    min-height: 100vh;
+    transition: background 0.4s ease, color 0.4s ease;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-solid);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* Glassmorphism Templates */
+.glass-card {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--card-border) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 12px 30px var(--shadow-color) !important;
+    border-radius: 24px !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.glass-card-hover:hover {
+    transform: translateY(-6px) scale(1.01) !important;
+    border-color: var(--card-border-hover) !important;
+    box-shadow: 0 15px 35px var(--accent-glow) !important;
+    background: var(--card-bg-hover) !important;
+}
+
+/* Navigation items hover */
+.glass-nav {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--card-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background 0.3s;
+}
+
+/* Elegant Text Gradients */
+.gradient-text {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-emerald {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Buttons Styling */
+.btn-premium {
+    background: var(--accent-gradient);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 1.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--accent-glow);
+    opacity: 0.95;
+}
+
+.btn-premium-outline {
+    background: transparent;
+    color: var(--text-primary) !important;
+    border: 2px solid var(--card-border-hover);
+    border-radius: 12px;
+    padding: 0.75rem 1.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-premium-outline:hover {
+    background: var(--card-border-hover);
+    transform: translateY(-2px);
+}
+
+/* Rotating quote carousel slider styles */
+.quote-slider {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.quote-slide {
+    animation: quoteFade 5s infinite ease-in-out;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+/* Pulse Glowing Badge */
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--accent-emerald);
+    display: inline-block;
+    box-shadow: 0 0 10px var(--accent-emerald);
+    animation: dotPulse 1.8s infinite;
+}
+
+/* Timeline Custom Styles */
+.timeline-container {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.timeline-line {
+    position: absolute;
+    width: 4px;
+    background: var(--card-border);
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    margin-left: -2px;
+}
+
+.timeline-item {
+    padding: 10px 40px;
+    position: relative;
+    background-color: inherit;
+    width: 50%;
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    right: -10px;
+    background-color: var(--bg-solid);
+    border: 4px solid var(--accent-blue);
+    top: 15px;
+    border-radius: 50%;
+    z-index: 1;
+    transition: all 0.3s;
+}
+
+.timeline-left {
+    left: 0;
+}
+
+.timeline-right {
+    left: 50%;
+}
+
+.timeline-right::after {
+    left: -10px;
+}
+
+/* Animations */
+@keyframes quoteFade {
+    0% { opacity: 0; transform: translateY(10px); }
+    8% { opacity: 1; transform: translateY(0); }
+    92% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes dotPulse {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.theme-toggle-btn:hover {
+    transform: rotate(30deg) scale(1.1);
+    border-color: var(--card-border-hover);
+}
+
+/* Interactive Hero Icon Floating */
+.floating-icon {
+    animation: floatAnim 4s infinite ease-in-out;
+}
+
+@keyframes floatAnim {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(3deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
+/* Form controls styling under premium */
+.form-control-premium {
+    background: rgba(15, 23, 42, 0.25) !important;
+    border: 1px solid var(--card-border) !important;
+    color: var(--text-primary) !important;
+    border-radius: 12px !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.3s !important;
+}
+.form-control-premium:focus {
+    background: rgba(15, 23, 42, 0.4) !important;
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25) !important;
+}
+
+.light-theme .form-control-premium {
+    background: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Confetti overlay positioning */
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* Mobile responsive timeline adjustments */
+@media screen and (max-width: 768px) {
+    .timeline-line {
+        left: 31px;
+    }
+    .timeline-item {
+        width: 100%;
+        padding-left: 70px;
+        padding-right: 25px;
+    }
+    .timeline-item::after {
+        left: 21px;
+    }
+    .timeline-right {
+        left: 0%;
+    }
+}

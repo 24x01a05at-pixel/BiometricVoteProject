@@ -9,47 +9,56 @@
     <title>Official Electronic Ballot</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { background: #f8fafc; font-family: 'Outfit', sans-serif; }
         .ballot-container { max-width: 900px; margin: 0 auto; }
-        .candidate-card { border-radius: 16px; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid #e2e8f0; }
-        .candidate-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        .selected-card { border-color: #3b82f6 !important; background-color: #eff6ff; }
-        .logo-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; background: #f1f5f9; }
+        .candidate-card { border-radius: 16px; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid var(--card-border); background: var(--card-bg); cursor: pointer; }
+        .candidate-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px var(--shadow-color); border-color: var(--card-border-hover); }
+        .selected-card { border-color: var(--accent-blue) !important; background: var(--card-bg-hover) !important; box-shadow: 0 0 15px var(--accent-glow) !important; }
+        .logo-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.05); }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column justify-content-between">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
-        <div class="container">
-            <span class="navbar-brand fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Official Electronic Ballot</span>
-            <span class="text-white small">Voter: <strong id="voter-name-label"></strong></span>
+    <!-- Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="navbar-brand fw-bold text-primary"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Official Electronic Ballot</span>
+            <span class="text-secondary small">Voter ID Verified: <strong id="voter-name-label" class="text-white"></strong></span>
         </div>
     </nav>
 
     <div class="container py-5">
         <div class="ballot-container">
-            <h2 class="fw-bold mb-1 text-center">Cast Your Vote</h2>
-            <p class="text-muted text-center mb-5">Select ONE candidate below and click "Cast Official Ballot". Your vote is secure, permanent, and private.</p>
+            <div class="card glass-card p-4 p-md-5">
+                <h2 class="fw-bold mb-1 text-center">Cast Your Vote</h2>
+                <p class="text-secondary text-center mb-5">Select ONE candidate below and click "Cast Official Ballot". Your vote is secure, permanent, and private.</p>
 
-            <form id="ballot-form">
-                <div class="row g-3" id="ballot-candidates">
-                    <!-- Candidates loaded dynamically -->
-                </div>
+                <form id="ballot-form">
+                    <div class="row g-3" id="ballot-candidates">
+                        <!-- Candidates loaded dynamically -->
+                    </div>
 
-                <div class="mt-5 text-center">
-                    <button type="submit" class="btn btn-primary btn-lg px-5 py-3 fw-bold shadow-lg" id="btn-cast">
-                        <i class="bi bi-check-circle-fill me-2"></i>CAST OFFICIAL BALLOT
-                    </button>
-                </div>
-            </form>
+                    <div class="mt-5 text-center">
+                        <button type="submit" class="btn btn-premium btn-lg w-100 py-3" id="btn-cast">
+                            <i class="bi bi-check-circle-fill me-2"></i>CAST OFFICIAL BALLOT
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- Client-Side Ballot Voting Script -->
     <script src="db.js?v=38"></script>
     <script>
+        // Apply theme persistence
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+        }
+
         const voterId = sessionStorage.getItem('verified_voter_id');
         const voterName = sessionStorage.getItem('verified_voter_name');
 
@@ -162,5 +171,8 @@
             window.location.href = 'vote_success.html';
         });
     </script>
+    <footer class="py-4 text-center mt-5" style="border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.4);">
+        <p class="mb-0 text-muted fst-italic" style="font-size: 0.9rem;">"Elections belong to the people. It's their decision." — Abraham Lincoln</p>
+    </footer>
 </body>
 </html>

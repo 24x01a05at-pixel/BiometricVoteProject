@@ -9,19 +9,21 @@
     <title>Candidate Nomination Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=38">
     <style>
-        body { background: #f8fafc; font-family: 'Outfit', sans-serif; }
-        .card-custom { border: none; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .cand-thumb { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; background: #f1f5f9; }
+        .cand-thumb { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-blue); background: rgba(255,255,255,0.05); }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column justify-content-between">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.html"><i class="bi bi-person-badge text-warning me-2"></i>Biometric Vote</a>
-            <a href="index.html" class="btn btn-outline-light btn-sm"><i class="bi bi-house me-1"></i>Home Portal</a>
+    <!-- Navbar -->
+    <nav class="glass-nav sticky-top py-3 z-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-primary fs-3"></i>
+                <span class="fw-bold tracking-wider fs-5">BIOMETRIC VOTE</span>
+            </div>
+            <a href="index.html" class="btn btn-premium-outline btn-sm py-2"><i class="bi bi-house me-1"></i>Home Portal</a>
         </div>
     </nav>
 
@@ -31,26 +33,26 @@
             
             <!-- Nomination Form -->
             <div class="col-lg-5">
-                <div class="card card-custom p-4 bg-white mb-4">
+                <div class="card glass-card p-4 mb-4">
                     <h3 class="fw-bold mb-1"><i class="bi bi-send-fill text-primary me-2"></i>Nominate Candidate</h3>
-                    <p class="text-muted small mb-4">Nominate candidates outside Admin. Requires Admin Control Center approval.</p>
+                    <p class="text-secondary small mb-4">Nominate candidates outside Admin. Requires Admin Control Center approval.</p>
                     
                     <div id="alert-box" class="alert d-none mb-4" role="alert"></div>
 
                     <form id="nomination-form">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Candidate Full Name</label>
-                            <input type="text" id="cand_name" class="form-control form-control-lg" placeholder="Enter Candidate Full Name" required>
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Candidate Full Name</label>
+                            <input type="text" id="cand_name" class="form-control form-control-lg form-control-premium" placeholder="Enter Candidate Full Name" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Party Name</label>
-                            <input type="text" id="party_name" class="form-control form-control-lg" placeholder="Enter Party Name" required>
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Party Name</label>
+                            <input type="text" id="party_name" class="form-control form-control-lg form-control-premium" placeholder="Enter Party Name" required>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">Party Logo / Symbol</label>
-                            <input type="file" id="logo_file" accept="image/*" class="form-control" required>
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Party Logo / Symbol</label>
+                            <input type="file" id="logo_file" accept="image/*" class="form-control form-control-premium" required>
                         </div>
-                        <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold py-3">
+                        <button type="submit" class="btn btn-premium btn-lg w-100 py-3">
                             SUBMIT NOMINATION FOR APPROVAL
                         </button>
                     </form>
@@ -59,12 +61,12 @@
 
             <!-- Approved Candidate Directory -->
             <div class="col-lg-6">
-                <div class="card card-custom p-4 bg-white">
+                <div class="card glass-card p-4">
                     <h4 class="fw-bold mb-3"><i class="bi bi-people-fill text-success me-2"></i>Approved Ballot Candidates</h4>
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
+                        <table class="table table-hover align-middle text-inherit" style="color: inherit;">
+                            <thead>
+                                <tr class="text-secondary">
                                     <th>Logo</th>
                                     <th>Candidate Name</th>
                                     <th>Party</th>
@@ -85,6 +87,13 @@
     <!-- Client-Side Nomination & Candidate Directory Script -->
     <script src="db.js?v=38"></script>
     <script>
+        // Apply theme persistence
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        } else {
+            document.body.classList.remove('light-theme');
+        }
+
         const form = document.getElementById('nomination-form');
         const alertBox = document.getElementById('alert-box');
         const candList = document.getElementById('candidate-list');
@@ -179,5 +188,8 @@
             }
         });
     </script>
+    <footer class="py-4 text-center mt-5" style="border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.4);">
+        <p class="mb-0 text-muted fst-italic" style="font-size: 0.9rem;">"A citizen's right to vote is the foundation of any democracy." — Chief Justice John Roberts</p>
+    </footer>
 </body>
 </html>
