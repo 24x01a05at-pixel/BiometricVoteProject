@@ -263,7 +263,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=42"></script>
+    <script src="db.js?v=43"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -361,7 +361,7 @@
             if (currentConfig.status === 'ACTIVE') {
                 stateBadge.className = "badge bg-success";
                 stateBadge.innerText = "ACTIVE (VOTING OPEN)";
-                stateBanner.className = "card card-custom p-4 mb-4 bg-white border-start border-4 border-success";
+                stateBanner.className = "card glass-card p-4 mb-4 border-start border-4 border-success";
                 
                 // Show timer row
                 timerRow.classList.remove('d-none');
@@ -370,7 +370,7 @@
                 controlCol.innerHTML = `
                     <div class="d-inline-flex flex-wrap gap-2 justify-content-md-end align-items-center">
                         <form id="extend-form" class="d-inline-flex gap-1 align-items-center">
-                            <input type="number" id="extend_mins" class="form-control form-control-sm" min="1" max="120" value="5" required style="width: 85px !important;">
+                            <input type="number" id="extend_mins" class="form-control form-control-sm form-control-premium" min="1" max="120" value="5" required style="width: 85px !important;">
                             <button type="submit" class="btn btn-warning btn-sm fw-bold"><i class="bi bi-clock-fill me-1"></i>+ Extend</button>
                         </form>
                         <button onclick="stopElection()" class="btn btn-danger btn-sm fw-bold px-3"><i class="bi bi-stop-fill me-1"></i>END ELECTION</button>
@@ -395,14 +395,14 @@
             } else if (currentConfig.status === 'CLOSED') {
                 stateBadge.className = "badge bg-danger";
                 stateBadge.innerText = "CLOSED (VOTING ENDED)";
-                stateBanner.className = "card card-custom p-4 mb-4 bg-white border-start border-4 border-danger";
+                stateBanner.className = "card glass-card p-4 mb-4 border-start border-4 border-danger";
                 timerRow.classList.add('d-none');
                 document.getElementById('closed-actions-header').classList.remove('d-none');
 
                 controlCol.innerHTML = `
                     <form id="start-form" class="d-inline-flex gap-2 align-items-center justify-content-md-end">
-                        <label class="form-label small fw-bold mb-0 text-nowrap">Duration (Minutes):</label>
-                        <input type="number" id="duration" class="form-control w-auto" min="1" max="1440" value="10" required style="width: 130px !important;">
+                        <label class="form-label small fw-bold mb-0 text-nowrap" style="color: var(--text-primary);">Duration (Minutes):</label>
+                        <input type="number" id="duration" class="form-control form-control-premium w-auto" min="1" max="1440" value="10" required style="width: 130px !important;">
                         <button type="submit" class="btn btn-success fw-bold px-4"><i class="bi bi-play-fill me-1"></i>START ELECTION</button>
                     </form>
                 `;
@@ -411,7 +411,7 @@
             } else {
                 stateBadge.className = "badge bg-secondary";
                 stateBadge.innerText = "NOT STARTED";
-                stateBanner.className = "card card-custom p-4 mb-4 bg-white border-start border-4 border-secondary";
+                stateBanner.className = "card glass-card p-4 mb-4 border-start border-4 border-secondary";
                 timerRow.classList.add('d-none');
 
                 controlCol.innerHTML = `
