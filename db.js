@@ -216,7 +216,7 @@ function getCandidateLogoHtml(logoPath, className = "cand-thumb") {
 let dbObjCached = null;
 let isInitialSyncDone = false;
 let initialSyncPromise = null;
-let saveDebounceTimeout = null;
+let saveDebounceTimeouts = {};
 let lastSyncTime = 0;
 
 async function syncCloudDB(force = false) {
@@ -377,9 +377,9 @@ async function setDB(key, value) {
     
     localStorage.setItem(key, JSON.stringify(value));
     
-    // Debounce writing back to the cloud database
-    if (saveDebounceTimeout) clearTimeout(saveDebounceTimeout);
-    saveDebounceTimeout = setTimeout(async () => {
+    // Debounce writing back to the cloud database (key-specific to prevent concurrent update cancellations)
+    if (saveDebounceTimeouts[key]) clearTimeout(saveDebounceTimeouts[key]);
+    saveDebounceTimeouts[key] = setTimeout(async () => {
         try {
             const response = await fetch(BASE_URL);
             if (response.status === 429) {

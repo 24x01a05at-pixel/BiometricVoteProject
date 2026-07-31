@@ -266,7 +266,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=54"></script>
+    <script src="db.js?v=55"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -637,6 +637,13 @@
                 if (req) {
                     req.status = 'APPROVED';
                     
+                    // Auto-resolve any other duplicate pending requests for the same voter
+                    requests.forEach(r => {
+                        if (r.id !== requestId && r.voter_id === req.voter_id && r.status === 'PENDING') {
+                            r.status = 'RESOLVED';
+                        }
+                    });
+                    
                     const votersList = await getDB('voters', []);
                     const voter = votersList.find(v => v.id === req.voter_id);
                     if (voter) {
@@ -674,6 +681,14 @@
                 const req = requests.find(r => r.id === requestId);
                 if (req) {
                     req.status = 'REJECTED';
+                    
+                    // Auto-reject any other duplicate pending requests for the same voter
+                    requests.forEach(r => {
+                        if (r.id !== requestId && r.voter_id === req.voter_id && r.status === 'PENDING') {
+                            r.status = 'REJECTED';
+                        }
+                    });
+                    
                     await setDB('correction_requests', requests);
                 }
             } catch (err) {
