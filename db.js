@@ -351,10 +351,14 @@ syncCloudDB().catch(e => console.warn("Background sync failed:", e));
 
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue, force = false) {
-    try {
+    if (force) {
         await syncCloudDB(force);
-    } catch (e) {
-        console.warn(`getDB: Sync failed for key "${key}", reading from local cache:`, e.message);
+    } else {
+        try {
+            await syncCloudDB(force);
+        } catch (e) {
+            console.warn(`getDB: Sync failed for key "${key}", reading from local cache:`, e.message);
+        }
     }
     const local = localStorage.getItem(key);
     return local ? JSON.parse(local) : defaultValue;
@@ -372,30 +376,17 @@ async function setDB(key, value) {
     }
     
     localStorage.setItem(key, JSON.stringify(value));
-    if (dbObjCached) {
-        dbObjCached[key] = value;
-    }
     
-    if (saveDebounceTimeout) {
-        clearTimeout(saveDebounceTimeout);
-    }
-    
+    // Debounce writing back to the cloud database
+    if (saveDebounceTimeout) clearTimeout(saveDebounceTimeout);
     saveDebounceTimeout = setTimeout(async () => {
         try {
             const response = await fetch(BASE_URL);
             if (response.status === 429) {
                 throw new Error("429 (Rate Limited - Too Many Requests)");
             }
-            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-            
+            if (!response.ok) throw new Error(`Read failed: ${response.status}`);
             const dbObj = await response.json();
-            
-            // Mark items in the saved payload as synced (so they don't count as deletes elsewhere)
-            if (Array.isArray(value)) {
-                value.forEach(item => {
-                    if (item) item.synced = true;
-                });
-            }
             
             dbObj[key] = value;
             dbObjCached = dbObj;
@@ -425,6 +416,7 @@ async function setDB(key, value) {
 function showOfflineWarningBadge(err) {
     let badge = document.getElementById('cloud-offline-badge');
     const errMsg = err ? `: ${err.message || err}` : '';
+    const resetBtnHtml = ` <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload();" class="btn btn-sm btn-light fw-bold py-0 px-2 ms-2" style="font-size: 0.7rem; border-radius: 20px; color: #ef4444; border: none;">Reset Cache</button>`;
     if (!badge) {
         badge = document.createElement('div');
         badge.id = 'cloud-offline-badge';
@@ -445,10 +437,10 @@ function showOfflineWarningBadge(err) {
             align-items: center;
             gap: 6px;
         `;
-        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}`;
+        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}${resetBtnHtml}`;
         document.body.appendChild(badge);
     } else {
-        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}`;
+        badge.innerHTML = `<i class="bi bi-cloud-slash-fill"></i> Local Mode (Cloud Offline)${errMsg}${resetBtnHtml}`;
     }
 }
 
