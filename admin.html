@@ -266,7 +266,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=52"></script>
+    <script src="db.js?v=53"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -733,7 +733,7 @@
             if (pendingVoters.length > 0) {
                 // Render tie voting panel
                 panelBox.innerHTML = `
-                    <div class="card card-custom p-4 bg-white mb-4 border border-warning border-3">
+                    <div class="card glass-card p-4 mb-4 border border-warning border-3">
                         <h4 class="fw-bold mb-2 text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Candidate Tie-Breaker Voting</h4>
                         <p class="text-muted small">Election is TIED. Only the tied candidates themselves are eligible to vote to break the tie.</p>
                         <div class="alert alert-info py-2 small mb-3">
@@ -785,7 +785,7 @@
             } else if (doubleTied.length > 1) {
                 // Double Tie Detected!
                 panelBox.innerHTML = `
-                    <div class="card card-custom p-4 bg-white mb-4 border border-danger border-3 text-center">
+                    <div class="card glass-card p-4 mb-4 border border-danger border-3 text-center">
                         <div class="mb-3 text-danger"><i class="bi bi-exclamation-octagon-fill display-4"></i></div>
                         <h4 class="text-danger fw-bold mb-2">Double Tie Detected!</h4>
                         <p class="text-muted small">The candidate tie-breaker voting also ended in a tie. You must re-conduct candidate voting or choose to restart the entire election.</p>
@@ -927,13 +927,13 @@
             }
         });
 
-        // 3-second silent dashboard state updater
+        // 3-second local-only dashboard state updater (reads from cache, never hits network)
         setInterval(async () => {
             if (sessionStorage.getItem('admin_logged_in') !== 'true') return;
             try {
-                const currentConfig = await getDB('election_config', { status: 'NOT_STARTED' });
-                const voters = await getDB('voters', []);
-                const candidates = await getDB('candidates', []);
+                const currentConfig = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
+                const voters = JSON.parse(localStorage.getItem('voters')) || [];
+                const candidates = JSON.parse(localStorage.getItem('candidates')) || [];
 
                 const totalReg = voters.length;
                 const votedCount = voters.filter(v => v.has_voted).length;
