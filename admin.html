@@ -34,6 +34,9 @@
                 <button onclick="forceSync()" class="btn btn-warning btn-sm py-2 d-none fw-bold text-dark" id="btn-sync">
                     <i class="bi bi-arrow-repeat me-1"></i>Sync with Cloud
                 </button>
+                <button onclick="adminResetCache()" class="btn btn-outline-danger btn-sm py-2 d-none" id="btn-clear-cache">
+                    <i class="bi bi-trash-fill me-1"></i>Clear Local Cache
+                </button>
                 <button onclick="logout()" class="btn btn-danger btn-sm py-2 d-none" id="btn-logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
             </div>
         </div>
@@ -266,7 +269,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="db.js?v=55"></script>
+    <script src="db.js?v=56"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -331,12 +334,21 @@
             window.location.reload();
         }
 
+        async function adminResetCache() {
+            if (!confirm("Are you sure you want to clear your browser's local cache? This will log you out, but will NOT affect the cloud database.")) return;
+            localStorage.clear();
+            sessionStorage.clear();
+            alert("Local cache cleared successfully! Reloading page...");
+            window.location.href = 'index.html';
+        }
+
         async function showDashboard() {
             document.getElementById('login-section').classList.add('d-none');
             document.getElementById('dashboard-section').classList.remove('d-none');
             document.getElementById('btn-logout').classList.remove('d-none');
             document.getElementById('btn-modal-pwd').classList.remove('d-none');
             document.getElementById('btn-sync').classList.remove('d-none');
+            document.getElementById('btn-clear-cache').classList.remove('d-none');
             await renderDashboard();
         }
 

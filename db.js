@@ -1,5 +1,5 @@
 // Cloud Database Helper using jsonblob.com directly for shared database across devices
-const BLOB_ID = "019fb416-1555-73f0-b1db-fa853a37ac2d";
+const BLOB_ID = "019fb94a-f7b9-7d4b-ab47-52ec4d14f768";
 const BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
 
 // Safe Base64 Helper for URL-safe path values in IIS
@@ -361,7 +361,27 @@ async function getDB(key, defaultValue, force = false) {
         }
     }
     const local = localStorage.getItem(key);
-    return local ? JSON.parse(local) : defaultValue;
+    let parsed = local ? JSON.parse(local) : defaultValue;
+    
+    // Safety check: ensure NOTA is ALWAYS present in candidates array
+    if (key === 'candidates') {
+        if (!Array.isArray(parsed)) parsed = [];
+        const hasNota = parsed.some(c => c && c.id === 9999);
+        if (!hasNota) {
+            parsed.unshift({
+                id: 9999,
+                name: 'NOTA',
+                party_name: 'None of the Above',
+                logo_path: 'static/symbols/nota.png',
+                votes: 0,
+                tie_votes: 0,
+                approved: true,
+                has_tie_voted: false
+            });
+            localStorage.setItem('candidates', JSON.stringify(parsed));
+        }
+    }
+    return parsed;
 }
 
 // Helper to write item to cloud DB with debouncing
@@ -416,7 +436,13 @@ async function setDB(key, value) {
 function showOfflineWarningBadge(err) {
     let badge = document.getElementById('cloud-offline-badge');
     const errMsg = err ? `: ${err.message || err}` : '';
-    const resetBtnHtml = ` <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload();" class="btn btn-sm btn-light fw-bold py-0 px-2 ms-2" style="font-size: 0.7rem; border-radius: 20px; color: #ef4444; border: none;">Reset Cache</button>`;
+    
+    // Only show "Reset Cache" option on admin.html to keep public pages clean and prevent confusion
+    const isAdmin = window.location.pathname.includes('admin.html');
+    const resetBtnHtml = isAdmin 
+        ? ` <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload();" class="btn btn-sm btn-light fw-bold py-0 px-2 ms-2" style="font-size: 0.7rem; border-radius: 20px; color: #ef4444; border: none;">Reset Cache</button>`
+        : '';
+        
     if (!badge) {
         badge = document.createElement('div');
         badge.id = 'cloud-offline-badge';
