@@ -1,6 +1,81 @@
 // Cloud Database Helper using jsonblob.com directly for shared database across devices
-const BLOB_ID = "019fb94a-f7b9-7d4b-ab47-52ec4d14f768";
-const BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
+let BLOB_ID = localStorage.getItem('active_blob_id') || "019fb94a-f7b9-7d4b-ab47-52ec4d14f768";
+let BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
+
+async function createNewCloudBlob() {
+    try {
+        console.warn("Cloud DB offline or returned 404. Auto-healing by creating fresh cloud database blob...");
+        const defaultVoters = JSON.parse(localStorage.getItem('voters')) || [
+            {
+                id: 101,
+                full_name: "Mahadev",
+                dob: "2006-03-07",
+                gender: "Male",
+                has_voted: false,
+                synced: true
+            }
+        ];
+        const defaultCandidates = JSON.parse(localStorage.getItem('candidates')) || [
+            {
+                id: 9999,
+                name: "NOTA",
+                party_name: "None of the Above",
+                logo_path: "static/symbols/nota.png",
+                approved: true,
+                votes: 0,
+                tie_votes: 0,
+                synced: true
+            },
+            {
+                id: 1002,
+                name: "Monkey.D.Garp.",
+                party_name: "HERO",
+                logo_path: "placeholder",
+                approved: true,
+                votes: 0,
+                tie_votes: 0,
+                synced: true
+            }
+        ];
+        const defaultConfig = JSON.parse(localStorage.getItem('election_config')) || {
+            status: "NOT_STARTED",
+            end_time: null,
+            admin_password: "admin123"
+        };
+        const defaultRequests = JSON.parse(localStorage.getItem('correction_requests')) || [];
+
+        const initialPayload = {
+            voters: defaultVoters,
+            candidates: defaultCandidates,
+            election_config: defaultConfig,
+            correction_requests: defaultRequests
+        };
+
+        const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(initialPayload)
+        });
+
+        if (res.ok) {
+            const loc = res.headers.get('Location');
+            if (loc) {
+                const newId = loc.split('/').pop();
+                console.log("Auto-healing created new cloud DB blob:", newId);
+                BLOB_ID = newId;
+                BASE_URL = `https://jsonblob.com/api/jsonBlob/${BLOB_ID}`;
+                localStorage.setItem('active_blob_id', BLOB_ID);
+                return newId;
+            }
+        }
+    } catch (err) {
+        console.error("Auto-healing cloud DB creation failed:", err);
+    }
+    return null;
+}
 
 // Safe Base64 Helper for URL-safe path values in IIS
 function encodeSafeBase64(str) {
@@ -19,8 +94,13 @@ function decodeSafeBase64(str) {
 }
 
 async function getCloudValue(key) {
-    const response = await fetch(BASE_URL);
-    if (response.status === 404) return null;
+    let response = await fetch(BASE_URL);
+    if (response.status === 404) {
+        const healedId = await createNewCloudBlob();
+        if (healedId) {
+            response = await fetch(BASE_URL);
+        }
+    }
     if (!response.ok) throw new Error(`Cloud error ${response.status}`);
     const dbObj = await response.json();
     hideOfflineWarningBadge();
@@ -230,7 +310,14 @@ async function syncCloudDB(force = false) {
     
     initialSyncPromise = (async () => {
         try {
-            const response = await fetch(BASE_URL);
+            let response = await fetch(BASE_URL);
+            if (response.status === 404) {
+                console.warn("Cloud DB returned 404 in syncCloudDB. Auto-healing...");
+                const healedId = await createNewCloudBlob();
+                if (healedId) {
+                    response = await fetch(BASE_URL);
+                }
+            }
             if (response.status === 429) {
                 throw new Error("429 (Rate Limited - Too Many Requests)");
             }
@@ -403,7 +490,14 @@ async function setDB(key, value) {
     if (saveDebounceTimeouts[key]) clearTimeout(saveDebounceTimeouts[key]);
     saveDebounceTimeouts[key] = setTimeout(async () => {
         try {
-            const response = await fetch(BASE_URL);
+            let response = await fetch(BASE_URL);
+            if (response.status === 404) {
+                console.warn("Cloud DB returned 404 in setDB. Auto-healing...");
+                const healedId = await createNewCloudBlob();
+                if (healedId) {
+                    response = await fetch(BASE_URL);
+                }
+            }
             if (response.status === 429) {
                 throw new Error("429 (Rate Limited - Too Many Requests)");
             }
