@@ -438,6 +438,40 @@ async function syncCloudDB(force = false) {
 // Trigger initial load immediately on script import
 syncCloudDB().catch(e => console.warn("Background sync failed:", e));
 
+const DEFAULT_MASTER_VOTERS = [
+    {
+        id: 101,
+        full_name: "Mahadev",
+        dob: "2006-03-07",
+        gender: "Male",
+        has_voted: false,
+        synced: true
+    }
+];
+
+const DEFAULT_MASTER_CANDIDATES = [
+    {
+        id: 9999,
+        name: "NOTA",
+        party_name: "None of the Above",
+        logo_path: "static/symbols/nota.png",
+        approved: true,
+        votes: 0,
+        tie_votes: 0,
+        synced: true
+    },
+    {
+        id: 1002,
+        name: "Monkey.D.Garp.",
+        party_name: "HERO",
+        logo_path: "placeholder",
+        approved: true,
+        votes: 0,
+        tie_votes: 0,
+        synced: true
+    }
+];
+
 // Helper to get item from cloud DB
 async function getDB(key, defaultValue, force = false) {
     if (force) {
@@ -452,22 +486,32 @@ async function getDB(key, defaultValue, force = false) {
     const local = localStorage.getItem(key);
     let parsed = local ? JSON.parse(local) : defaultValue;
     
-    // Safety check: ensure NOTA is ALWAYS present in candidates array
+    if (key === 'voters') {
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            parsed = DEFAULT_MASTER_VOTERS;
+            localStorage.setItem('voters', JSON.stringify(parsed));
+        }
+    }
+    
     if (key === 'candidates') {
-        if (!Array.isArray(parsed)) parsed = [];
-        const hasNota = parsed.some(c => c && c.id === 9999);
-        if (!hasNota) {
-            parsed.unshift({
-                id: 9999,
-                name: 'NOTA',
-                party_name: 'None of the Above',
-                logo_path: 'static/symbols/nota.png',
-                votes: 0,
-                tie_votes: 0,
-                approved: true,
-                has_tie_voted: false
-            });
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            parsed = DEFAULT_MASTER_CANDIDATES;
             localStorage.setItem('candidates', JSON.stringify(parsed));
+        } else {
+            const hasNota = parsed.some(c => c && c.id === 9999);
+            if (!hasNota) {
+                parsed.unshift({
+                    id: 9999,
+                    name: 'NOTA',
+                    party_name: 'None of the Above',
+                    logo_path: 'static/symbols/nota.png',
+                    votes: 0,
+                    tie_votes: 0,
+                    approved: true,
+                    has_tie_voted: false
+                });
+                localStorage.setItem('candidates', JSON.stringify(parsed));
+            }
         }
     }
     return parsed;
