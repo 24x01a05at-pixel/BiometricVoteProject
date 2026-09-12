@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head><title>Create Fresh Blob</title></head>
+<body>
+<h1>Creating Blob...</h1>
+<div id="output">Running...</div>
+<script>
+const payload = {
+  voters: [
+    {
+      id: 101,
+      full_name: "Mahadev",
+      dob: "2006-03-07",
+      gender: "Male",
+      has_voted: false,
+      synced: true
+    }
+  ],
+  candidates: [
+    {
+      id: 9999,
+      name: "NOTA",
+      party_name: "None of the Above",
+      logo_path: "static/symbols/nota.png",
+      approved: true,
+      votes: 0,
+      tie_votes: 0,
+      synced: true
+    },
+    {
+      id: 1002,
+      name: "Monkey.D.Garp.",
+      party_name: "HERO",
+      logo_path: "placeholder",
+      approved: true,
+      votes: 0,
+      tie_votes: 0,
+      synced: true
+    }
+  ],
+  election_config: {
+    status: "NOT_STARTED",
+    end_time: null,
+    admin_password: "admin123"
+  },
+  correction_requests: []
+};
+
+fetch('https://jsonblob.com/api/jsonBlob', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  body: JSON.stringify(payload)
+})
+.then(res => {
+  const loc = res.headers.get('Location');
+  document.getElementById('output').innerText = "Status: " + res.status + " | Location: " + loc;
+})
+.catch(err => {
+  document.getElementById('output').innerText = "Error: " + err.message;
+});
+</script>
+</body>
+</html>
