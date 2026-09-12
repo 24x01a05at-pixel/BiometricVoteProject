@@ -221,8 +221,8 @@ let lastSyncTime = 0;
 
 async function syncCloudDB(force = false) {
     const now = Date.now();
-    // Throttle background syncs to once every 60 seconds unless forced or it is the first sync
-    if (!force && now - lastSyncTime < 60000 && isInitialSyncDone) {
+    // Throttle background syncs to once every 4 seconds for real-time cross-device updates
+    if (!force && now - lastSyncTime < 4000 && isInitialSyncDone) {
         return;
     }
     
@@ -242,6 +242,7 @@ async function syncCloudDB(force = false) {
             
             const keys = ['voters', 'candidates', 'election_config', 'correction_requests'];
             let hasNewLocalData = false;
+            let hasChangedData = false;
             
             for (const key of keys) {
                 const cloudVal = dbObj[key];
@@ -334,6 +335,7 @@ async function syncCloudDB(force = false) {
             
             hideOfflineWarningBadge();
             isInitialSyncDone = true;
+            window.dispatchEvent(new Event('db-updated'));
         } catch (err) {
             console.error("Database synchronization failed:", err);
             showOfflineWarningBadge(err);
@@ -426,11 +428,12 @@ async function setDB(key, value) {
             localStorage.setItem(key, JSON.stringify(value));
             
             hideOfflineWarningBadge();
+            window.dispatchEvent(new Event('db-updated'));
         } catch (err) {
             console.error(`Failed to write key "${key}" to cloud DB:`, err);
             showOfflineWarningBadge(err);
         }
-    }, 1500);
+    }, 300);
 }
 
 function showOfflineWarningBadge(err) {

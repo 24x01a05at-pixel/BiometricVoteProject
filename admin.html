@@ -10,7 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=57">
+    <link rel="stylesheet" href="styles.css?v=58">
     <style>
         .stat-card { border-left: 5px solid !important; }
         .cand-thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); }
@@ -269,7 +269,7 @@
     </div>
 
     <!-- Client-Side Admin Dashboard Controller Script -->
-    <script src="vote_db.js?v=57"></script>
+    <script src="vote_db.js?v=58"></script>
     <script>
         // Apply theme persistence
         if (localStorage.getItem('theme') === 'light') {
@@ -502,7 +502,7 @@
                     
                 const ageInfo = v.age ? ` (Age: ${v.age})` : '';
                 const dobInfo = v.dob ? `DOB: ${v.dob}${ageInfo}` : `Age: ${v.age || 'N/A'}`;
-                const ageGenderHtml = `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
+                const ageGenderHtml = `<small class="voter-meta text-muted d-block" style="font-size: 0.85rem; font-weight: 500; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -940,8 +940,15 @@
         }
 
         // Automatic Real-Time Synchronization Listeners
+        window.addEventListener('db-updated', async () => {
+            if (sessionStorage.getItem('admin_logged_in') === 'true') {
+                await renderDashboard();
+            }
+        });
+
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible' && sessionStorage.getItem('admin_logged_in') === 'true') {
+                await syncCloudDB(true).catch(() => {});
                 await renderDashboard();
             }
         });
@@ -954,9 +961,11 @@
             }
         });
 
-        // 3-second local-only dashboard state updater (reads from cache, never hits network)
+        // 4-second background cloud sync & dashboard state updater
         setInterval(async () => {
             if (sessionStorage.getItem('admin_logged_in') !== 'true') return;
+            // Silently check cloud for new registrations from other devices
+            syncCloudDB(false).catch(() => {});
             try {
                 const currentConfig = JSON.parse(localStorage.getItem('election_config')) || { status: 'NOT_STARTED' };
                 const voters = JSON.parse(localStorage.getItem('voters')) || [];
@@ -1016,7 +1025,7 @@
                             
                         const ageInfo = v.age ? ` (Age: ${v.age})` : '';
                         const dobInfo = v.dob ? `DOB: ${v.dob}${ageInfo}` : `Age: ${v.age || 'N/A'}`;
-                        const ageGenderHtml = `<small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
+                        const ageGenderHtml = `<small class="voter-meta text-muted d-block" style="font-size: 0.85rem; font-weight: 500; margin-top: 2px;">${dobInfo} | Gender: ${v.gender || 'N/A'}</small>`;
 
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
